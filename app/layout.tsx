@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Stumpd",
-  description: "Guess the IPL player daily",
+  description: "Guess the IPL cricketer daily",
 };
 
 export const viewport: Viewport = {

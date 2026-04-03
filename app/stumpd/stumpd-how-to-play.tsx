@@ -83,14 +83,14 @@ export default function StumpdHowToPlay() {
           How to play
         </h1>
         <p className="legal-page__intro how-to-play-page__lede">
-          Guess the IPL player in 6 tries.
+          Guess the IPL cricketer in 6 tries.
         </p>
       </header>
 
       <div className="legal-page__intro-block how-to-play-page__rules-wrap">
         <ul className="how-to-play-rules">
           <li>
-            Each guess must be a valid 5-letter player name.
+            Each guess must be a valid 5-letter cricketer name.
           </li>
           <li>Names are shortened to fit 5 letters, it can be first or last name. Example: YUVRAJ → YUVRA</li>
           <li>

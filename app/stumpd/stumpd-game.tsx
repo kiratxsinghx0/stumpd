@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import ShareModal from "../components/share";
 import HowToPlayModal from "../components/how-to-play-modal";
 import GuessHistoryModal from "../components/guess-history-modal";
@@ -452,6 +452,9 @@ export default function Game() {
   const [cookieConsentDone, setCookieConsentDone] = useState(false);
   const [howToPlayDone, setHowToPlayDone] = useState(false);
   const [aliasWin, setAliasWin] = useState(false);
+  const [showNudge, setShowNudge] = useState(false);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nudgeShownRef = useRef(false);
 
   const [playerList, setPlayerList] = useState<IplPlayerRow[]>(iplPlayers);
 
@@ -647,20 +650,48 @@ export default function Game() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wrongGuessCount]);
 
-  const currentHint = showProgressiveHint
-    ? resolveHintTier(wrongGuessCount - 1, usedTriviaIndices)
-    : null;
-
-  const hintContentKey = showOpeningHint
-    ? "opening"
-    : `prog-${wrongGuessCount}`;
-
   const allUnlockedHints: { label: string; text: string }[] = [
     { label: "Opening Clue", text: openingHintText },
   ];
   for (let i = 1; i <= wrongGuessCount; i++) {
     allUnlockedHints.push(resolveHintTier(i - 1, usedTriviaIndices));
   }
+
+  const [activeHintIdx, setActiveHintIdx] = useState(0);
+  const [hintSlideDir, setHintSlideDir] = useState<"left" | "right" | "">("");
+
+  useEffect(() => {
+    setActiveHintIdx(allUnlockedHints.length - 1);
+    setHintSlideDir("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wrongGuessCount]);
+
+  const hintTouchRef = useRef<{ startX: number; startY: number; swiping: boolean }>({ startX: 0, startY: 0, swiping: false });
+
+  const onHintTouchStart = useCallback((e: React.TouchEvent) => {
+    hintTouchRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, swiping: false };
+  }, []);
+
+  const onHintTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - hintTouchRef.current.startX;
+    const dy = e.changedTouches[0].clientY - hintTouchRef.current.startY;
+    if (Math.abs(dx) < 30 || Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < 0 && activeHintIdx < allUnlockedHints.length - 1) {
+      setHintSlideDir("left");
+      setActiveHintIdx(prev => prev + 1);
+    } else if (dx > 0 && activeHintIdx > 0) {
+      setHintSlideDir("right");
+      setActiveHintIdx(prev => prev - 1);
+    }
+  }, [activeHintIdx, allUnlockedHints.length]);
+
+  const goToHint = useCallback((idx: number) => {
+    if (idx === activeHintIdx) return;
+    setHintSlideDir(idx > activeHintIdx ? "left" : "right");
+    setActiveHintIdx(idx);
+  }, [activeHintIdx]);
+
+  const viewingHint = allUnlockedHints[activeHintIdx] ?? allUnlockedHints[allUnlockedHints.length - 1];
 
   useEffect(() => {
     persistUnlockedHints(allUnlockedHints);
@@ -715,6 +746,34 @@ export default function Game() {
     }, 1000);
     return () => clearInterval(id);
   }, [timerStarted, gameOver]);
+
+  const NUDGE_IDLE_MS = 45_000;
+
+  const resetNudgeTimer = useCallback(() => {
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = null;
+    setShowNudge(false);
+  }, []);
+
+  const startNudgeTimer = useCallback(() => {
+    if (nudgeShownRef.current || gameOver) return;
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = setTimeout(() => {
+      if (!nudgeShownRef.current) {
+        setShowNudge(true);
+        nudgeShownRef.current = true;
+      }
+    }, NUDGE_IDLE_MS);
+  }, [gameOver]);
+
+  useEffect(() => {
+    if (!timerStarted || gameOver) {
+      resetNudgeTimer();
+      return;
+    }
+    startNudgeTimer();
+    return () => { if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current); };
+  }, [timerStarted, gameOver, guesses.length, startNudgeTimer, resetNudgeTimer]);
 
   // Per-tile flip sequencer
   useEffect(() => {
@@ -799,7 +858,7 @@ export default function Game() {
         return;
       }
       if (currentInput !== answer && !validGuesses.includes(currentInput)) {
-        setMessage("Not a valid player name");
+        setMessage("Not a valid cricketer name");
         setShaking(true);
         setTimeout(() => { setShaking(false); setMessage(""); }, 600);
         return;
@@ -846,7 +905,7 @@ export default function Game() {
         <div className={shellVpClass ? `game-shell ${shellVpClass}` : "game-shell"}>
 
         <div className="game-shell__top">
-          <p className="game-subtitle">Guess the player</p>
+          <p className="game-subtitle game-subtitle--stumpd">Guess the Cricketer</p>
           {gameOver && shareDismissed ? <NextPuzzleTimer /> : null}
         </div>
 
@@ -856,6 +915,35 @@ export default function Game() {
             <div className="game-validation-toast">{message}</div>
           ) : null}
         </div>
+
+        {showNudge && (
+          <div className="game-nudge-backdrop" onClick={() => setShowNudge(false)}>
+            <div className="game-nudge-popup" role="alert" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className="game-nudge-popup__close"
+                onClick={() => setShowNudge(false)}
+                aria-label="Dismiss tip"
+              >
+                ✕
+              </button>
+              <p className="game-nudge-popup__icon">💡</p>
+              <p className="game-nudge-popup__title">Quick tip</p>
+              <p className="game-nudge-popup__text">
+                Don&apos;t just wait for hints — try typing any cricketer name!
+                Even a wrong guess shows you which letters are in the answer.
+                That makes it way easier to figure out the right one.
+              </p>
+              <button
+                type="button"
+                className="game-nudge-popup__btn"
+                onClick={() => setShowNudge(false)}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="game-grid-wrap">
           <div className="game-grid">
@@ -938,27 +1026,79 @@ export default function Game() {
           aria-live="polite"
         >
           {showHintSlot ? (
-            <div className="game-hint-card" role="status">
-              {showOpeningHint ? (
-                <div key={hintContentKey} className="game-hint-card__content game-hint-card__content--enter">
-                  <p className="game-hint-card__label">Clue</p>
-                  <p className="game-hint-card__text">{openingHintText}</p>
-                </div>
-              ) : currentHint ? (
-                <div key={hintContentKey} className="game-hint-card__content game-hint-card__content--enter">
-                  <p className="game-hint-card__label">{currentHint.label}</p>
-                  <p className="game-hint-card__text">{currentHint.text}</p>
-                </div>
-              ) : null}
+            <div
+              className="game-hint-card"
+              role="status"
+              onTouchStart={onHintTouchStart}
+              onTouchEnd={onHintTouchEnd}
+            >
+              {allUnlockedHints.length > 1 && (
+                <button
+                  type="button"
+                  className="game-hint-card__arrow game-hint-card__arrow--left"
+                  onClick={() => goToHint(activeHintIdx - 1)}
+                  disabled={activeHintIdx === 0}
+                  aria-label="Previous clue"
+                >
+                  <span className="game-hint-card__arrow__icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                  </span>
+                </button>
+              )}
+              {allUnlockedHints.length > 1 && (
+                <button
+                  type="button"
+                  className="game-hint-card__arrow game-hint-card__arrow--right"
+                  onClick={() => goToHint(activeHintIdx + 1)}
+                  disabled={activeHintIdx === allUnlockedHints.length - 1}
+                  aria-label="Next clue"
+                >
+                  <span className="game-hint-card__arrow__icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                  </span>
+                </button>
+              )}
+
+              <div
+                key={`hint-${activeHintIdx}`}
+                className={`game-hint-card__content game-hint-card__content--slide${
+                  hintSlideDir === "left" ? "-left" : hintSlideDir === "right" ? "-right" : ""
+                }`}
+              >
+                <p className="game-hint-card__label">{viewingHint.label}</p>
+                <p className="game-hint-card__text">{viewingHint.text}</p>
+              </div>
+
+              <div className="game-hint-card__dots">
+                {allUnlockedHints.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`game-hint-card__dot${
+                      i === activeHintIdx ? " game-hint-card__dot--active" : ""
+                    }`}
+                    onClick={() => goToHint(i)}
+                    aria-label={`Go to clue ${i + 1}`}
+                  />
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
 
         <div className="game-shortname-notice" role="note">
-          <span className="game-shortname-notice__icon">✂️</span>
-          <p className="game-shortname-notice__text">
-            Some names shortened to 5 letters · e.g. <strong>YUVRAJ</strong> → <strong>YUVRA</strong>
-          </p>
+          <div className="game-shortname-notice__pill">
+            <span className="game-shortname-notice__tag">INFO</span>
+            <span className="game-shortname-notice__divider" />
+            <p className="game-shortname-notice__text">
+              Names trimmed to 5 letters
+              <span className="game-shortname-notice__example">
+                <strong>YUVRAJ</strong>
+                <span className="game-shortname-notice__arrow">→</span>
+                <strong>YUVRA</strong>
+              </span>
+            </p>
+          </div>
         </div>
         </div>
       </div>
@@ -1059,6 +1199,7 @@ export default function Game() {
         open={showHintHistory}
         onClose={() => setShowHintHistory(false)}
         hints={allUnlockedHints}
+        totalHints={HINT_LADDER.length + 1}
         answerRevealed={lost && !isAnimating}
         answerDisplay={displayRevealName}
       />

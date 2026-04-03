@@ -5,7 +5,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "How to Play — Stumpd",
   description:
-    "Guess the IPL player in six tries. Learn the rules and tile colors.",
+    "Guess the IPL cricketer in six tries. Learn the rules and tile colors.",
 };
 
 export default function HowToPlayPage() {
