@@ -2507,6 +2507,21 @@ a.page-header-icon-btn {
   line-height: 1.35;
 }
 
+.legal-page__purposes h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #14532d;
+  line-height: 1.35;
+}
+
+.legal-page__purposes p {
+  margin: 0 0 0.65rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #3d3d3d;
+}
+
 .legal-page__purposes ul {
   margin: 0;
   padding: 0;
@@ -2557,6 +2572,18 @@ a.page-header-icon-btn {
   font-size: 0.9375rem;
   line-height: 1.65;
   color: #3d3d3d;
+}
+
+.legal-page__cookie-note ul {
+  margin: 0.45rem 0 0.65rem;
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #3d3d3d;
+}
+
+.legal-page__cookie-note li + li {
+  margin-top: 0.35rem;
 }
 
 .legal-page__intro-block + .legal-page__purposes {
