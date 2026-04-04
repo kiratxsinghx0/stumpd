@@ -1,6 +1,19 @@
 /* RESET */
 * { box-sizing: border-box; padding: 0; margin: 0; }
 
+/* Visually hidden; kept in DOM for screen readers and crawlers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
 :root {
   /* Tiles â€” mobile first */
   --tile-size: min(52px, max(28px, calc((100dvh - 30rem) / 6.5)));
