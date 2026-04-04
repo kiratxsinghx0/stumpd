@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { GameStats } from "./games";
 import NextPuzzleTimer from "./timers";
-
-type GameStats = {
-  gamesPlayed: number;
-  gamesWon: number;
-  currentStreak: number;
-  maxStreak: number;
-};
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -38,6 +32,11 @@ type Props = {
 
 const DISTRIBUTION = [5, 12, 28, 30, 17, 8];
 const PLAYED_TODAY = 8_901;
+
+function formatCompactCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
+}
 
 function getTopPercent(guessCount: number): number {
   let cumulative = 0;
@@ -75,28 +74,89 @@ function HeroBlock({ guessCount, topPercent, elapsedSeconds }: { guessCount: num
   );
 }
 
-function WinSocialProof({
+function SharePersonalStats({ stats }: { stats: GameStats }) {
+  const winPct = stats.gamesPlayed > 0 ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0;
+  return (
+    <div className="share-personal-stats">
+      <h3 className="share-personal-stats__title">Statistics</h3>
+      <div className="share-personal-stats__row" role="list">
+        <div className="share-personal-stats__col" role="listitem">
+          <span className="share-personal-stats__val">{stats.gamesPlayed}</span>
+          <span className="share-personal-stats__label">Played</span>
+        </div>
+        <div className="share-personal-stats__divider" aria-hidden="true" />
+        <div className="share-personal-stats__col" role="listitem">
+          <span className="share-personal-stats__val">{winPct}</span>
+          <span className="share-personal-stats__label">Win %</span>
+        </div>
+        <div className="share-personal-stats__divider" aria-hidden="true" />
+        <div className="share-personal-stats__col" role="listitem">
+          <span className="share-personal-stats__val">{stats.currentStreak}</span>
+          <span className="share-personal-stats__label share-personal-stats__label--twoline">
+            Current<br />streak
+          </span>
+        </div>
+        <div className="share-personal-stats__divider" aria-hidden="true" />
+        <div className="share-personal-stats__col" role="listitem">
+          <span className="share-personal-stats__val">{stats.maxStreak}</span>
+          <span className="share-personal-stats__label share-personal-stats__label--twoline">
+            Max<br />streak
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Launch social proof — compact grid so the modal stays scannable */
+function ShareCommunityPulse({
+  variant,
   beatPercent,
   guessedInPercent,
   guessCount,
 }: {
-  beatPercent: number;
-  guessedInPercent: number;
-  guessCount: number;
+  variant: "win" | "loss";
+  beatPercent?: number;
+  guessedInPercent?: number;
+  guessCount?: number;
 }) {
+  if (variant === "win" && beatPercent != null && guessedInPercent != null && guessCount != null) {
+    return (
+      <div className="share-community-pulse">
+        <p className="share-community-pulse__eyebrow">Live from today&apos;s players</p>
+        <div className="share-community-pulse__grid">
+          <div className="share-community-pulse__cell">
+            <span className="share-community-pulse__value">{formatCompactCount(PLAYED_TODAY)}</span>
+            <span className="share-community-pulse__label">played today</span>
+          </div>
+          <div className="share-community-pulse__cell">
+            <span className="share-community-pulse__value">{beatPercent}%</span>
+            <span className="share-community-pulse__label">you beat</span>
+          </div>
+          <div className="share-community-pulse__cell">
+            <span className="share-community-pulse__value">{guessedInPercent}%</span>
+            <span className="share-community-pulse__label">solved in {guessCount}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="share-social">
-      <div className="share-social__row">
-        <span className="share-social__icon">🔥</span>
-        <span>You beat <strong>{beatPercent}%</strong> of players</span>
-      </div>
-      <div className="share-social__row">
-        <span className="share-social__icon">⭐</span>
-        <span>Only <strong>{guessedInPercent}%</strong> guessed in {guessCount} tries</span>
-      </div>
-      <div className="share-social__row">
-        <span className="share-social__icon">👥</span>
-        <span><strong>{PLAYED_TODAY.toLocaleString()}</strong> played today</span>
+    <div className="share-community-pulse share-community-pulse--loss">
+      <p className="share-community-pulse__eyebrow">You&apos;re not alone</p>
+      <div className="share-community-pulse__grid">
+        <div className="share-community-pulse__cell">
+          <span className="share-community-pulse__value">18%</span>
+          <span className="share-community-pulse__label">solved today</span>
+        </div>
+        <div className="share-community-pulse__cell">
+          <span className="share-community-pulse__value">5+</span>
+          <span className="share-community-pulse__label">tries for most</span>
+        </div>
+        <div className="share-community-pulse__cell">
+          <span className="share-community-pulse__value">{formatCompactCount(PLAYED_TODAY)}</span>
+          <span className="share-community-pulse__label">played today</span>
+        </div>
       </div>
     </div>
   );
@@ -105,7 +165,7 @@ function WinSocialProof({
 function DistributionChart({ userGuess, won }: { userGuess: number; won: boolean }) {
   const maxVal = Math.max(...DISTRIBUTION);
   return (
-    <div className="share-dist">
+    <div className="share-dist share-dist--compact">
       <h3 className="share-dist__title">Guess Distribution</h3>
       {DISTRIBUTION.map((pct, i) => {
         const num = i + 1;
@@ -149,25 +209,6 @@ function LossHero({ correctLetters, elapsedSeconds }: { correctLetters: number; 
   );
 }
 
-function LossSocialProof() {
-  return (
-    <div className="share-social">
-      <div className="share-social__row">
-        <span className="share-social__icon">⭐</span>
-        <span>Only <strong>18%</strong> solved today</span>
-      </div>
-      <div className="share-social__row">
-        <span className="share-social__icon">💪</span>
-        <span>Most players needed <strong>5+</strong> tries</span>
-      </div>
-      <div className="share-social__row">
-        <span className="share-social__icon">👥</span>
-        <span><strong>{PLAYED_TODAY.toLocaleString()}</strong> played today</span>
-      </div>
-    </div>
-  );
-}
-
 /* ── Shared ── */
 
 const STATUS_TILE_COLOR: Record<string, string> = {
@@ -196,7 +237,7 @@ function SharePreviewCard({
   const rows = statuses.slice(0, guessCount);
   const isStumpd = !!gameTitle;
   return (
-    <div className={`share-preview-card${isStumpd ? " share-preview-card--stumpd" : ""}`}>
+    <div className={`share-preview-card share-preview-card--compact${isStumpd ? " share-preview-card--stumpd" : ""}`}>
       {isStumpd && (
         <div className="share-preview-card__stumpd-header">
           <span className="share-preview-card__stumpd-title">
@@ -236,7 +277,6 @@ function formatElapsed(totalSeconds: number): string {
 
 export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints }: Props) {
   void answer;
-  void stats;
   const [copied, setCopied] = useState(false);
   const isStumpd = !!gameTitle;
 
@@ -316,77 +356,99 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
           <h2 className="share-modal-title">
             {won ? "Congratulations!" : "Almost had it!"}
           </h2>
-          {won && <p className="share-modal-subtitle">You cracked it.</p>}
-          {!won && <p className="share-modal-subtitle">You were closer than you think.</p>}
+          {won && (
+            <p className="share-modal-subtitle">
+              You cracked it — <span className="share-modal-subtitle--accent">worth flexing.</span>
+            </p>
+          )}
+          {!won && (
+            <p className="share-modal-subtitle">
+              Tough puzzle — <span className="share-modal-subtitle--accent">still worth the challenge.</span>
+            </p>
+          )}
         </div>
 
-        {won ? (
-          <>
-            {/* Win flow */}
-            <HeroBlock guessCount={guessCount} topPercent={topPercent} elapsedSeconds={elapsedSeconds} />
-            <WinSocialProof
-              beatPercent={beatPercent}
-              guessedInPercent={guessedInPercent}
-              guessCount={guessCount}
-            />
-            <DistributionChart userGuess={guessCount} won={won} />
-          </>
-        ) : (
-          <>
-            {/* Loss flow */}
-            <LossHero correctLetters={correctLetters} elapsedSeconds={elapsedSeconds} />
-            <LossSocialProof />
-            <div className="share-loss-timer">
-              <NextPuzzleTimer />
-            </div>
-          </>
-        )}
-
-        {/* Visual share card */}
-        <SharePreviewCard
-          statuses={statuses}
-          guessCount={guessCount}
-          summaryLine={summaryLine}
-          gameTitle={gameTitle}
-          puzzleDay={puzzleDay}
-          hintsUsed={hintsUsed}
-          maxHints={maxHints}
-        />
-
-        {/* Share button */}
-        <button
-          type="button"
-          className={`share-modal-share-btn${copied ? " share-modal-share-btn--copied" : ""}`}
-          onClick={handleCopy}
-        >
-          {copied ? (
+        <div className="share-modal-scroll">
+          {won ? (
             <>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Copied!
+              <HeroBlock guessCount={guessCount} topPercent={topPercent} elapsedSeconds={elapsedSeconds} />
+              <SharePersonalStats stats={stats} />
+              <ShareCommunityPulse
+                variant="win"
+                beatPercent={beatPercent}
+                guessedInPercent={guessedInPercent}
+                guessCount={guessCount}
+              />
+              <DistributionChart userGuess={guessCount} won={won} />
             </>
           ) : (
             <>
-              Share Result
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="18" cy="5" r="3" />
-                <circle cx="6" cy="12" r="3" />
-                <circle cx="18" cy="19" r="3" />
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
+              <LossHero correctLetters={correctLetters} elapsedSeconds={elapsedSeconds} />
+              <SharePersonalStats stats={stats} />
+              <ShareCommunityPulse variant="loss" />
+              <div className="share-loss-timer">
+                <NextPuzzleTimer />
+              </div>
             </>
           )}
-        </button>
-        <p className="share-modal-share-sub">
-          {copied ? "Now send it to your friends" : "Challenge your friends"}
-        </p>
 
-        {/* Prize hook */}
-        <p className="share-prize-hook">
-          🎁 Coming soon: Win rewards during IPL season
-        </p>
+          <SharePreviewCard
+            statuses={statuses}
+            guessCount={guessCount}
+            summaryLine={summaryLine}
+            gameTitle={gameTitle}
+            puzzleDay={puzzleDay}
+            hintsUsed={hintsUsed}
+            maxHints={maxHints}
+          />
+        </div>
+
+        <div className="share-modal-sticky-cta">
+          <p className="share-cta-primer">
+            {copied
+              ? "Paste anywhere — let the grid do the talking."
+              : won
+                ? "You did the hard part. One tap ships the proof."
+                : "Share the grid — dare someone to beat your read."}
+          </p>
+          <button
+            type="button"
+            className={`share-modal-share-btn${copied ? " share-modal-share-btn--copied" : ""}`}
+            onClick={handleCopy}
+          >
+            {copied ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                Share Result
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              </>
+            )}
+          </button>
+          <div className="share-modal-footnotes">
+            <p className="share-modal-share-sub share-modal-footnote-pop">
+              {copied
+                ? "Your streak and stats stay on this device — the grid is what travels."
+                : won
+                  ? "Bragging rights included."
+                  : "Tag the friend who thinks they're sharper."}
+            </p>
+            <p className="share-prize-hook share-prize-hook--sticky share-modal-footnote-pop">
+              🎁 IPL season: rewards for sharers — coming soon
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ import { iplPlayers, fetchIplPlayersFromAPI } from "./ipl-players";
 import type { IplPlayerRow } from "./ipl-players";
 import { fetchPuzzleToday } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
+import type { GameStats } from "../components/games";
+import { DEFAULT_STUMPD_STATS, readStats, recordGameResult } from "./stats-storage";
 
 function findHint<T = string>(hints: PuzzleHintEntry[], key: string): T | undefined {
   const entry = hints.find((h) => h[key] !== undefined);
@@ -200,59 +202,6 @@ const GAME_STORAGE_KEYS = [
   LS_TIMER_STARTED_KEY,
   LS_USED_TRIVIA_KEY,
 ] as const;
-
-/** ── Persistent stats (survive across puzzles) ── */
-const LS_STATS_KEY = "stumpdpuzzle_stats";
-
-export type GameStats = {
-  gamesPlayed: number;
-  gamesWon: number;
-  currentStreak: number;
-  maxStreak: number;
-};
-
-const DEFAULT_STATS: GameStats = { gamesPlayed: 0, gamesWon: 0, currentStreak: 0, maxStreak: 0 };
-
-function readStats(): GameStats {
-  if (typeof window === "undefined") return DEFAULT_STATS;
-  try {
-    const raw = localStorage.getItem(LS_STATS_KEY);
-    if (!raw) return DEFAULT_STATS;
-    return { ...DEFAULT_STATS, ...(JSON.parse(raw) as Partial<GameStats>) };
-  } catch {
-    return DEFAULT_STATS;
-  }
-}
-
-function persistStats(stats: GameStats): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(LS_STATS_KEY, JSON.stringify(stats));
-  } catch { /* quota / private mode */ }
-}
-
-/** Key that tracks whether stats were already recorded for a given game id. */
-const LS_STATS_RECORDED_KEY = "stumpdpuzzle_statsRecordedGameId";
-
-function recordGameResult(won: boolean, gameId: string): GameStats {
-  const prev = readStats();
-  const alreadyRecorded =
-    typeof window !== "undefined" &&
-    localStorage.getItem(LS_STATS_RECORDED_KEY) === gameId;
-  if (alreadyRecorded) return prev;
-
-  const next: GameStats = {
-    gamesPlayed: prev.gamesPlayed + 1,
-    gamesWon: prev.gamesWon + (won ? 1 : 0),
-    currentStreak: won ? prev.currentStreak + 1 : 0,
-    maxStreak: won
-      ? Math.max(prev.maxStreak, prev.currentStreak + 1)
-      : prev.maxStreak,
-  };
-  persistStats(next);
-  try { localStorage.setItem(LS_STATS_RECORDED_KEY, gameId); } catch { /* */ }
-  return next;
-}
 
 /**
  * If persisted `gameId` matches `CURRENT_GAME_ID`, keep game data. Otherwise clear game-related keys
@@ -475,7 +424,7 @@ export default function Game() {
   /** Cookie accepted + how to play seen — enables initial trivia before first guess (client-read). */
   const [returningUserHints, setReturningUserHints] = useState(false);
   const [usedTriviaIndices, setUsedTriviaIndices] = useState<number[]>([]);
-  const [stats, setStats] = useState<GameStats>(DEFAULT_STATS);
+  const [stats, setStats] = useState<GameStats>(DEFAULT_STUMPD_STATS);
   const [timerStarted, setTimerStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [cookieConsentDone, setCookieConsentDone] = useState(false);
@@ -887,6 +836,12 @@ export default function Game() {
       return () => clearTimeout(t);
     }
   }, [gameOver, shareDismissed]);
+
+  // Share modal always reflects latest persisted stats (localStorage is source of truth after each game).
+  useEffect(() => {
+    if (!showModal) return;
+    setStats(readStats());
+  }, [showModal]);
 
   const handleKey = useCallback((key: string) => {
     if (inputLocked || isAnimating || gameOver) return;
