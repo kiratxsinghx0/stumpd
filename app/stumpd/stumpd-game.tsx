@@ -54,15 +54,32 @@ function readReturningUserHintEligible(): boolean {
 
 type IplHintEntry = PuzzleHintEntry;
 
-function resolvePlayerByName(token: string, playerList: IplPlayerRow[]): IplPlayerRow | null {
+/** When `disambiguateFullName` is set (from the daily puzzle), pick that row among duplicate tokens (e.g. RASHI). */
+function resolvePlayerByName(
+  token: string,
+  playerList: IplPlayerRow[],
+  disambiguateFullName?: string | null,
+): IplPlayerRow | null {
   const normalized = token.trim().toLowerCase();
-  return playerList.find((p) => p.name.toLowerCase() === normalized) ?? null;
+  const matches = playerList.filter((p) => p.name.toLowerCase() === normalized);
+  if (matches.length === 0) return null;
+  const fn = disambiguateFullName?.trim();
+  if (fn) {
+    const hit = matches.find((p) => p.meta.fullName === fn);
+    if (hit) return hit;
+  }
+  return matches[0] ?? null;
 }
 
-function isSamePlayer(guess: string, answer: string, playerList: IplPlayerRow[]): boolean {
+function isSamePlayer(
+  guess: string,
+  answer: string,
+  playerList: IplPlayerRow[],
+  answerFullName?: string | null,
+): boolean {
   if (guess === answer) return true;
-  const gp = resolvePlayerByName(guess, playerList);
-  const ap = resolvePlayerByName(answer, playerList);
+  const gp = resolvePlayerByName(guess, playerList, null);
+  const ap = resolvePlayerByName(answer, playerList, answerFullName ?? null);
   if (!gp || !ap) return false;
   return !!gp.meta.fullName && gp.meta.fullName === ap.meta.fullName;
 }
@@ -273,7 +290,12 @@ function readShareDismissedForPuzzle(puzzleId: string): boolean {
   }
 }
 
-function parseGuessObject(raw: string, targetAnswer: string, playerList: IplPlayerRow[]): { guesses: string[]; statuses: string[][] } | null {
+function parseGuessObject(
+  raw: string,
+  targetAnswer: string,
+  playerList: IplPlayerRow[],
+  answerFullName: string | null,
+): { guesses: string[]; statuses: string[][] } | null {
   const obj = JSON.parse(raw) as Record<string, string>;
   const keys = Object.keys(obj)
     .map(Number)
@@ -286,7 +308,7 @@ function parseGuessObject(raw: string, targetAnswer: string, playerList: IplPlay
     const g = obj[String(k)];
     if (typeof g !== "string" || g.length !== WORD_LENGTH) continue;
     guesses.push(g);
-    const isAlias = g !== targetAnswer && isSamePlayer(g, targetAnswer, playerList);
+    const isAlias = g !== targetAnswer && isSamePlayer(g, targetAnswer, playerList, answerFullName);
     statuses.push(isAlias ? Array(WORD_LENGTH).fill("correct") : getLetterStatuses(g, targetAnswer));
   }
   if (guesses.length === 0) return null;
@@ -298,7 +320,12 @@ function parseGuessObject(raw: string, targetAnswer: string, playerList: IplPlay
  * `puzzleId` is only written after the game ends (win or 6 guesses); until then it is absent and we still restore in-progress boards.
  * If `puzzleId` is present, it must match `PLAYER_TO_GUESS` (finished game for this puzzle).
  */
-function readStoredGuesses(puzzleId: string, targetAnswer: string, playerList: IplPlayerRow[]): { guesses: string[]; statuses: string[][] } | null {
+function readStoredGuesses(
+  puzzleId: string,
+  targetAnswer: string,
+  playerList: IplPlayerRow[],
+  answerFullName: string | null,
+): { guesses: string[]; statuses: string[][] } | null {
   if (typeof window === "undefined") return null;
   try {
     if (localStorage.getItem(LS_USER_HAS_PLAYED_KEY) !== "yes") return null;
@@ -308,7 +335,7 @@ function readStoredGuesses(puzzleId: string, targetAnswer: string, playerList: I
     }
     const raw = localStorage.getItem(LS_GUESS_KEY);
     if (!raw) return null;
-    return parseGuessObject(raw, targetAnswer, playerList);
+    return parseGuessObject(raw, targetAnswer, playerList, answerFullName);
   } catch {
     return null;
   }
@@ -324,6 +351,7 @@ function persistGuess(
   word: string,
   targetAnswer: string,
   playerList: IplPlayerRow[],
+  answerFullName: string | null,
 ) {
   if (typeof window === "undefined") return;
   try {
@@ -338,7 +366,7 @@ function persistGuess(
     }
     obj[String(guessIndex1Based)] = word;
     localStorage.setItem(LS_GUESS_KEY, JSON.stringify(obj));
-    const won = isSamePlayer(word, targetAnswer, playerList);
+    const won = isSamePlayer(word, targetAnswer, playerList, answerFullName);
     const gameOver = won || guessIndex1Based === MAX_GUESSES;
     if (gameOver) {
       localStorage.setItem(LS_PUZZLE_ID_KEY, puzzleId);
@@ -432,6 +460,7 @@ export default function Game() {
     ? xorDecode(puzzleData.encoded, ENCODE_KEY).toUpperCase()
     : "";
   const currentGameId = puzzleData ? String(puzzleData.day) : "";
+  const puzzleAnswerFullName = puzzleData?.fullName ?? null;
 
   const [currentInput,  setCurrentInput]  = useState("");
   const [guesses,       setGuesses]       = useState<string[]>([]);
@@ -472,8 +501,11 @@ export default function Game() {
   );
 
   const targetPlayer = useMemo(
-    () => playerToGuess ? resolvePlayerByName(playerToGuess, playerList) : null,
-    [playerList, playerToGuess]
+    () =>
+      playerToGuess
+        ? resolvePlayerByName(playerToGuess, playerList, puzzleAnswerFullName)
+        : null,
+    [playerList, playerToGuess, puzzleAnswerFullName]
   );
 
   const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone;
@@ -577,11 +609,11 @@ export default function Game() {
   const [winBounceRow, setWinBounceRow] = useState<number | null>(null);
 
   const isAnimating = flippingRow !== null;
-  const won      = guesses.length > 0 && isSamePlayer(guesses[guesses.length - 1], answer, playerList);
+  const won      = guesses.length > 0 && isSamePlayer(guesses[guesses.length - 1], answer, playerList, puzzleAnswerFullName);
   const lost     = !won && guesses.length === MAX_GUESSES;
   const gameOver = won || lost;
 
-  const wrongGuessCount = guesses.filter((g) => !isSamePlayer(g, answer, playerList)).length;
+  const wrongGuessCount = guesses.filter((g) => !isSamePlayer(g, answer, playerList, puzzleAnswerFullName)).length;
 
   const playerHints: IplHintEntry[] = puzzleData?.hints ?? [];
 
@@ -722,10 +754,10 @@ export default function Game() {
       if (savedTrivia) setUsedTriviaIndices(JSON.parse(savedTrivia));
     } catch { /* */ }
 
-    const loaded = readStoredGuesses(currentGameId, answer, playerList);
+    const loaded = readStoredGuesses(currentGameId, answer, playerList, puzzleAnswerFullName);
     if (!loaded) return;
     const last = loaded.guesses[loaded.guesses.length - 1];
-    const wasStoredWin = isSamePlayer(last, answer, playerList);
+    const wasStoredWin = isSamePlayer(last, answer, playerList, puzzleAnswerFullName);
     const gameDone = wasStoredWin || loaded.guesses.length === MAX_GUESSES;
     const dismissedShare = gameDone && readShareDismissedForPuzzle(currentGameId);
     setGuesses(loaded.guesses);
@@ -733,7 +765,7 @@ export default function Game() {
     setLetterStatus(letterStatusFromRows(loaded.guesses, loaded.statuses));
     if (dismissedShare) setShareDismissed(true);
     if (wasStoredWin && last !== answer) setAliasWin(true);
-  }, [playerToGuess, currentGameId, answer, playerList]);
+  }, [playerToGuess, currentGameId, answer, playerList, puzzleAnswerFullName]);
 
   useEffect(() => {
     if (!timerStarted || gameOver) return;
@@ -787,9 +819,9 @@ export default function Game() {
       } else {
         const guess    = flippingGuess;
         const completedRowIndex = flippingRow ?? 0;
-        persistGuess(currentGameId, completedRowIndex + 1, guess, answer, playerList);
+        persistGuess(currentGameId, completedRowIndex + 1, guess, answer, playerList, puzzleAnswerFullName);
 
-        const justWon = isSamePlayer(guess, answer, playerList);
+        const justWon = isSamePlayer(guess, answer, playerList, puzzleAnswerFullName);
         const isAlias = justWon && guess !== answer;
         const rowStats = isAlias
           ? Array(WORD_LENGTH).fill("correct") as string[]
@@ -828,7 +860,16 @@ export default function Game() {
     }, FLIP_DURATION + FLIP_STAGGER);
 
     return () => clearTimeout(timer);
-  }, [currentFlipCol, flippingRow, flippingGuess, flippingStatuses]);
+  }, [
+    currentFlipCol,
+    flippingRow,
+    flippingGuess,
+    flippingStatuses,
+    currentGameId,
+    answer,
+    playerList,
+    puzzleAnswerFullName,
+  ]);
 
   // Clear win bounce class after animation completes
   useEffect(() => {
@@ -864,7 +905,7 @@ export default function Game() {
         return;
       }
 
-      const isAliasGuess = currentInput !== answer && isSamePlayer(currentInput, answer, playerList);
+      const isAliasGuess = currentInput !== answer && isSamePlayer(currentInput, answer, playerList, puzzleAnswerFullName);
       const rowStatuses = isAliasGuess
         ? Array(WORD_LENGTH).fill("correct") as string[]
         : getLetterStatuses(currentInput, answer);
@@ -886,7 +927,7 @@ export default function Game() {
       }
       setCurrentInput(prev => prev.length < WORD_LENGTH ? prev + key.toLowerCase() : prev);
     }
-  }, [currentInput, guesses, isAnimating, gameOver, timerStarted, inputLocked, answer, validGuesses]);
+  }, [currentInput, guesses, isAnimating, gameOver, timerStarted, inputLocked, answer, validGuesses, playerList, puzzleAnswerFullName]);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
