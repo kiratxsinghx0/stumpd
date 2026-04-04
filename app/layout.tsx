@@ -7,8 +7,8 @@ import "./globals.css";
 const siteUrl = new URL(SITE_URL);
 
 /*
- * Replace public/og-image.png with a 1200x630 branded image for Stumpd
- * (referenced below in openGraph / twitter metadata).
+ * OG preview image: public/og-image.png (1200×630). Regenerate after SVG edits:
+ *   npm run generate-og-image
  *
  * Google Search Console (HTML tag method): set GOOGLE_SITE_VERIFICATION in
  * the deploy environment to the content value from Search Console.
