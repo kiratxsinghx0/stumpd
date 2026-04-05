@@ -963,8 +963,8 @@ a.page-header-icon-btn {
 
 /* Hint strip â€” matches grid width; min-height avoids jump when hint appears. */
 .game-hint-slot {
-  width: calc(5 * var(--tile-size) + 4 * var(--tile-gap));
-  max-width: min(100%, 92vw);
+  width: calc(100vw - 24px);
+  max-width: min(100%, calc(100vw - 24px));
   margin-inline: auto;
   box-sizing: border-box;
   display: flex;
@@ -1000,7 +1000,8 @@ a.page-header-icon-btn {
 
 @media (min-width: 768px) {
   .game-hint-slot {
-    width: calc(5 * var(--tile-size) + 4 * var(--tile-gap) + 40px);
+    width: calc(7 * var(--tile-size) + 6 * var(--tile-gap));
+    max-width: min(100%, 92vw);
   }
 
   .game-hint-slot--active {
@@ -1015,7 +1016,8 @@ a.page-header-icon-btn {
 
 @media (min-width: 1024px) {
   .game-hint-slot {
-    width: calc(5 * var(--tile-size) + 4 * var(--tile-gap) + 50px);
+    width: calc(7 * var(--tile-size) + 6 * var(--tile-gap));
+    max-width: min(100%, 92vw);
   }
 
   .game-hint-slot--active {
@@ -1290,21 +1292,19 @@ a.page-header-icon-btn {
 
 
 .next-puzzle-timer-card {
-  width: min(100%, 16rem);
-  margin: 16px auto 12px;
-  padding: 10px 14px 12px;
+  width: min(100%, 12rem);
+  margin: 8px auto 6px;
+  padding: 6px 12px 8px;
   text-align: center;
   background: linear-gradient(180deg, #fafafa 0%, #f3f4f3 100%);
   border: 1px solid #e4e6e4;
-  border-radius: 12px;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    0 4px 16px rgba(19, 78, 58, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .next-puzzle-timer-card__label {
-  margin: 0 0 4px;
-  font-size: 0.7rem;
+  margin: 0 0 2px;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 1.2px;
   font-weight: 600;
@@ -1312,7 +1312,7 @@ a.page-header-icon-btn {
 }
 
 .next-puzzle-timer-card__time {
-  font-size: clamp(1.2rem, 4.2vw, 1.65rem);
+  font-size: clamp(1rem, 3.5vw, 1.3rem);
   font-weight: 800;
   letter-spacing: 0.16em;
   color: #111;
@@ -4055,17 +4055,17 @@ a.page-header-icon-btn {
   width: 100%;
   max-width: 484px;
   margin: 0 auto;
-  padding: 16px 8px 24px;
+  padding: 12px 8px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
 }
 
 /* ── Game result notice (shown above See Results for win & loss) ── */
 .game-result-notice {
   text-align: center;
-  border-radius: 12px;
+  border-radius: 32px;
   padding: 12px 20px;
   max-width: 320px;
   width: 100%;
@@ -4121,4 +4121,187 @@ a.page-header-icon-btn {
 
 .see-results-btn:active {
   transform: scale(0.97);
+}
+
+/* ── Reminder prompt (push notification opt-in after game over) ── */
+
+/* -- Compact variant (game screen — single-line, unobtrusive) -- */
+.reminder-prompt--compact {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 4px;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #f0fdf4, #e8f5e9);
+  border: 1px solid #b7d9b0;
+  border-radius: 32px;
+  text-align: center;
+  animation: result-notice-enter 0.4s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.reminder-prompt--compact.reminder-prompt--success {
+  background: linear-gradient(135deg, #e8f5e9, #dcf0dc);
+  border-color: #6aaa64;
+}
+
+.reminder-prompt--compact .reminder-prompt__text {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2d5a2e;
+  line-height: 1.3;
+}
+
+.reminder-prompt--compact.reminder-prompt--success .reminder-prompt__text {
+  color: #2d6a2e;
+}
+
+.reminder-prompt--compact .reminder-prompt__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.reminder-prompt--compact .reminder-prompt__btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 32px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.reminder-prompt--compact .reminder-prompt__btn:active {
+  transform: scale(0.96);
+}
+
+.reminder-prompt--compact .reminder-prompt__btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.reminder-prompt--compact .reminder-prompt__btn--accept {
+  background: #538d4e;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(83, 141, 78, 0.3);
+}
+
+.reminder-prompt--compact .reminder-prompt__btn--accept:hover:not(:disabled) {
+  background: #6aaa64;
+}
+
+.reminder-prompt--compact .reminder-prompt__btn--dismiss {
+  background: transparent;
+  color: #777;
+  border: none;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.reminder-prompt--compact .reminder-prompt__btn--dismiss:hover:not(:disabled) {
+  color: #444;
+}
+
+@media (max-width: 380px) {
+  .reminder-prompt--compact {
+    flex-direction: column;
+    border-radius: 12px;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+}
+
+/* -- Inline variant (inside share modal footer) -- */
+.reminder-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #f0fdf4, #e8f5e9);
+  border: 1px solid #b7d9b0;
+  border-radius: 10px;
+  animation: result-notice-enter 0.4s ease-out;
+}
+
+.reminder-inline__text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2d5a2e;
+  white-space: nowrap;
+}
+
+.reminder-inline__btn {
+  padding: 6px 16px;
+  background: #538d4e;
+  color: #fff;
+  border: none;
+  border-radius: 32px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(83, 141, 78, 0.3);
+  letter-spacing: 0.01em;
+}
+
+.reminder-inline__btn:hover:not(:disabled) {
+  background: #6aaa64;
+}
+
+.reminder-inline__btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.reminder-inline__btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.reminder-inline__dismiss {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.reminder-inline__dismiss:hover:not(:disabled) {
+  color: #555;
+}
+
+.reminder-inline--success {
+  color: #2d6a2e;
+  font-weight: 600;
+  font-size: 0.82rem;
+  background: linear-gradient(135deg, #e8f5e9, #dcf0dc);
+  border: 1px solid #6aaa64;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+@media (max-width: 380px) {
+  .reminder-inline {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .reminder-inline__text {
+    white-space: normal;
+    text-align: center;
+    width: 100%;
+    font-size: 0.8rem;
+  }
 }

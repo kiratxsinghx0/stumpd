@@ -16,11 +16,13 @@ export type PuzzleData = {
 };
 
 export async function fetchPlayers(): Promise<Response> {
-  return fetch(`${API_BASE}/api/ipl/players`);
+  return fetch(`${API_BASE}/api/ipl/players`, { cache: "no-store" });
 }
 
 export async function fetchPlayerCount(): Promise<number> {
-  const res = await fetch(`${API_BASE}/api/ipl/players/count`);
+  const res = await fetch(`${API_BASE}/api/ipl/players/count`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error(`API returned ${res.status}`);
   const json = await res.json();
   if (!json.success || !json.data) throw new Error("Unexpected response shape");
@@ -28,7 +30,9 @@ export async function fetchPlayerCount(): Promise<number> {
 }
 
 export async function fetchPuzzleToday(): Promise<PuzzleData> {
-  const res = await fetch(`${API_BASE}/api/ipl/puzzle/today`);
+  const res = await fetch(`${API_BASE}/api/ipl/puzzle/today`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error(`API returned ${res.status}`);
   const json = await res.json();
   if (!json.success || !json.data) throw new Error("Unexpected response shape");
@@ -36,7 +40,9 @@ export async function fetchPuzzleToday(): Promise<PuzzleData> {
 }
 
 export async function fetchPuzzleByDay(day: number): Promise<PuzzleData> {
-  const res = await fetch(`${API_BASE}/api/ipl/puzzle/day/${day}`);
+  const res = await fetch(`${API_BASE}/api/ipl/puzzle/day/${day}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error(`API returned ${res.status}`);
   const json = await res.json();
   if (!json.success || !json.data) throw new Error("Unexpected response shape");

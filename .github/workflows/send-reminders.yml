@@ -1,0 +1,37 @@
+name: Send Push Reminders
+
+on:
+  schedule:
+    # 8:00 AM IST = 2:30 AM UTC
+    - cron: "30 2 * * *"
+    # 8:00 PM IST = 2:30 PM UTC
+    - cron: "30 14 * * *"
+  workflow_dispatch:
+    inputs:
+      type:
+        description: "Notification type (morning or evening)"
+        required: false
+        default: "morning"
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine notification type
+        id: notif_type
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.type }}" >> "$GITHUB_OUTPUT"
+          elif [ "$HOUR" -ge 12 ]; then
+            echo "type=evening" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=morning" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send push notifications
+        run: |
+          curl -sf -X POST \
+            "${{ secrets.SITE_URL }}/api/push/send?type=${{ steps.notif_type.outputs.type }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"

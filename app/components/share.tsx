@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { GameStats } from "./games";
 import NextPuzzleTimer from "./timers";
+import ReminderPrompt from "./reminder-prompt";
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -444,9 +445,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                   ? "Bragging rights included."
                   : "Tag the friend who thinks they're sharper."}
             </p>
-            <p className="share-prize-hook share-prize-hook--sticky share-modal-footnote-pop">
-              🎁 IPL season: rewards for sharers — coming soon
-            </p>
+            <ReminderPrompt variant="inline" />
           </div>
         </div>
       </div>

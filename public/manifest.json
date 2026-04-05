@@ -1,0 +1,16 @@
+{
+  "name": "Stumpd – Daily IPL Cricket Wordle",
+  "short_name": "Stumpd",
+  "start_url": "/stumpd",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "/stumpd-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

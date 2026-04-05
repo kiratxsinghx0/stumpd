@@ -14,6 +14,7 @@ import { fetchPuzzleToday } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
 import type { GameStats } from "../components/games";
 import { DEFAULT_STUMPD_STATS, readStats, recordGameResult } from "./stats-storage";
+import ReminderPrompt from "../components/reminder-prompt";
 
 function findHint<T = string>(hints: PuzzleHintEntry[], key: string): T | undefined {
   const entry = hints.find((h) => h[key] !== undefined);
@@ -1123,6 +1124,7 @@ export default function Game() {
           >
             See Results
           </button>
+          <ReminderPrompt variant="compact" />
         </div>
       ) : (
       <div className="game-page__keyboard">
