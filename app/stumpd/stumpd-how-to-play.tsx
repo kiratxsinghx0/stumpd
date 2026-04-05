@@ -3,170 +3,147 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
-const TILE_DEFAULT = {
-  backgroundColor: "#fff",
-  borderColor: "#d3d6da",
-  color: "#000",
+const COLORS = {
+  correct: { bg: "#6aaa64", border: "#6aaa64", color: "#fff" },
+  present: { bg: "#c9b458", border: "#c9b458", color: "#fff" },
+  absent: { bg: "#787c7e", border: "#787c7e", color: "#fff" },
+  empty: { bg: "#fff", border: "#d3d6da", color: "#1a1a1a" },
 } as const;
 
-const TILE_STYLES = {
-  correct: {
-    backgroundColor: "#6aaa64",
-    borderColor: "#6aaa64",
-    color: "#fff",
-  },
-  present: {
-    backgroundColor: "#c9b458",
-    borderColor: "#c9b458",
-    color: "#fff",
-  },
-  absent: {
-    backgroundColor: "#787c7e",
-    borderColor: "#787c7e",
-    color: "#fff",
-  },
-} as const;
+type Status = keyof typeof COLORS;
 
-function ExampleRow({
-  word,
-  index,
-  kind,
-  flipDelayMs = 0,
-}: {
-  word: string;
-  index: number;
-  kind: keyof typeof TILE_STYLES;
-  flipDelayMs?: number;
-}) {
-  const letters = word.toUpperCase().split("");
+function Tile({ letter, status }: { letter: string; status: Status }) {
+  const c = COLORS[status];
   return (
-    <div className="how-to-play-tile-row" aria-hidden>
-      {letters.map((letter, i) => {
-        const active = i === index;
-        const s = active ? TILE_STYLES[kind] : TILE_DEFAULT;
-        const style = active
-          ? ({
-              "--tile-bg": s.backgroundColor,
-              "--tile-border": s.borderColor,
-              animationDelay: `${flipDelayMs}ms`,
-            } as CSSProperties & Record<string, string>)
-          : ({
-              backgroundColor: TILE_DEFAULT.backgroundColor,
-              borderColor: TILE_DEFAULT.borderColor,
-              color: TILE_DEFAULT.color,
-            } as CSSProperties);
-        return (
-          <div
-            key={`${word}-${i}`}
-            className={
-              "tile game-tile how-to-play-example-tile" +
-              (active ? " flipping" : "")
-            }
-            style={style}
-          >
-            {letter}
-          </div>
-        );
-      })}
-    </div>
+    <span
+      className="htp__tile"
+      style={
+        {
+          backgroundColor: c.bg,
+          borderColor: c.border,
+          color: c.color,
+        } as CSSProperties
+      }
+    >
+      {letter}
+    </span>
   );
 }
 
 export default function StumpdHowToPlay() {
   return (
-    <>
-      <header className="legal-page__header how-to-play-page__header">
-        <h1
-          className="legal-page__title how-to-play-page__title"
-          id="how-to-play-heading"
-        >
-          How to play
+    <div className="htp">
+      <header className="htp__header">
+        <h1 className="htp__title" id="how-to-play-heading">
+          How to Play
         </h1>
-        <p className="legal-page__intro how-to-play-page__lede">
-          Guess the IPL cricketer in 6 tries.
+        <p className="htp__subtitle">
+          Guess the mystery IPL cricketer in 6 tries
         </p>
       </header>
 
-      <div className="legal-page__intro-block how-to-play-page__rules-wrap">
-        <ul className="how-to-play-rules">
-          <li>
-            Each guess must be a valid 5-letter cricketer name.
-          </li>
-          <li>Names are shortened to fit 5 letters, it can be first or last name. Example: YUVRAJ → YUVRA</li>
-          <li>
-            After each guess, the color of the tiles will change to show how
-            close your guess was to the answer.
-          </li>
-        </ul>
+      <section className="htp__card">
+        <div className="htp__step">
+          <span className="htp__step-num">1</span>
+          <p className="htp__step-text">
+            Type an IPL cricketer&apos;s name and press <kbd>Enter</kbd>
+          </p>
+        </div>
+        <div className="htp__step">
+          <span className="htp__step-num">2</span>
+          <p className="htp__step-text">
+            Tiles change color to show how close each letter is
+          </p>
+        </div>
+        <div className="htp__step">
+          <span className="htp__step-num">3</span>
+          <p className="htp__step-text">
+            Use the clues to crack it in 6 guesses or fewer
+          </p>
+        </div>
+      </section>
+
+      <section className="htp__card">
+        <h2 className="htp__section-title">Tile Colors</h2>
+        <div className="htp__color-legend">
+          <div className="htp__color-item">
+            <Tile letter="V" status="correct" />
+            <span className="htp__color-label">
+              Correct letter, correct spot
+            </span>
+          </div>
+          <div className="htp__color-item">
+            <Tile letter="O" status="present" />
+            <span className="htp__color-label">
+              Correct letter, wrong spot
+            </span>
+          </div>
+          <div className="htp__color-item">
+            <Tile letter="A" status="absent" />
+            <span className="htp__color-label">Not in the word</span>
+          </div>
+        </div>
+        <div className="htp__example-wrap">
+          <p className="htp__example-label">Example</p>
+          <div className="htp__tile-row" aria-hidden>
+            <Tile letter="V" status="correct" />
+            <Tile letter="I" status="empty" />
+            <Tile letter="R" status="present" />
+            <Tile letter="A" status="absent" />
+            <Tile letter="T" status="correct" />
+          </div>
+        </div>
+      </section>
+
+      <div className="htp__tip">
+        <span className="htp__tip-icon" aria-hidden>
+          💡
+        </span>
+        <p className="htp__tip-text">
+          Names are shortened to 5 letters — it can be a first or last name.
+          <br />
+          Example: <strong>YUVRAJ</strong> → <strong>YUVRA</strong>
+        </p>
       </div>
 
-      <section
-        className="legal-page__section how-to-play-page__examples"
-        aria-labelledby="how-examples"
-      >
-        <h2 id="how-examples">Examples</h2>
-
-        <div className="how-to-play-example">
-          <ExampleRow word="VIRAT" index={0} kind="correct" flipDelayMs={0} />
-          <p className="how-to-play-example__caption">
-            The letter <strong>V</strong> is in the word and in the correct
-            spot.
-          </p>
-        </div>
-
-        <div className="how-to-play-example">
-          <ExampleRow word="DHONI" index={2} kind="present" flipDelayMs={320} />
-          <p className="how-to-play-example__caption">
-            The letter <strong>O</strong> is in the word but in the wrong spot.
-          </p>
-        </div>
-
-        <div className="how-to-play-example">
-          <ExampleRow word="YUVRA" index={4} kind="absent" flipDelayMs={640} />
-          <p className="how-to-play-example__caption">
-            The letter <strong>A</strong> is not in the word in any spot.
-          </p>
-        </div>
-      </section>
-
-      <section
-        className="legal-page__section how-to-play-page__hints-section"
-        aria-labelledby="how-hints"
-      >
-        <div className="stumpd-hints-panel">
-          <div className="stumpd-hints-panel__header">
-            <p className="stumpd-hints-panel__title" id="how-hints">Hints</p>
-            <p className="stumpd-hints-panel__subtitle">
-              A new hint unlocks with each wrong guess
-            </p>
-          </div>
-          <div className="stumpd-hints-grid">
-            <div className="stumpd-hint-chip">
-              <span className="stumpd-hint-chip__icon">🏏</span>
-              <span className="stumpd-hint-chip__text">IPL Team & Nationality</span>
-            </div>
-            <div className="stumpd-hint-chip">
-              <span className="stumpd-hint-chip__icon">💡</span>
-              <span className="stumpd-hint-chip__text">Trivia</span>
-            </div>
-            <div className="stumpd-hint-chip">
-              <span className="stumpd-hint-chip__icon">🎯</span>
-              <span className="stumpd-hint-chip__text">Role</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="legal-page__section how-to-play-page__footnote-section"
-        aria-labelledby="how-footnote"
-      >
-        <p className="how-to-play-page__footnote" id="how-footnote">
-          A new puzzle is released daily with a countdown after each game—visit
-          the{" "}
-          <Link href="/contact">contact page</Link> if you need help.
+      <section className="htp__card">
+        <h2 className="htp__section-title">Hints</h2>
+        <p className="htp__hints-intro">
+          Wrong guesses unlock hints to help narrow it down:
         </p>
+        <div className="htp__hint-timeline">
+          <div className="htp__hint-step">
+            <span className="htp__hint-badge">Guess 1</span>
+            <span className="htp__hint-icon" aria-hidden>
+              🏏
+            </span>
+            <span className="htp__hint-label">IPL Team &amp; Nationality</span>
+          </div>
+          <div className="htp__hint-step">
+            <span className="htp__hint-badge">Guess 2</span>
+            <span className="htp__hint-icon" aria-hidden>
+              💡
+            </span>
+            <span className="htp__hint-label">Trivia clue</span>
+          </div>
+          <div className="htp__hint-step">
+            <span className="htp__hint-badge">Guess 3</span>
+            <span className="htp__hint-icon" aria-hidden>
+              🎯
+            </span>
+            <span className="htp__hint-label">Playing role</span>
+          </div>
+        </div>
       </section>
-    </>
+
+      <footer className="htp__footer">
+        <p>A new puzzle drops every day — come back tomorrow!</p>
+        <p>
+          <Link href="/contact" className="htp__footer-link">
+            Need help? Get in touch
+          </Link>
+        </p>
+      </footer>
+    </div>
   );
 }

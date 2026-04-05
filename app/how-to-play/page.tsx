@@ -10,13 +10,13 @@ export const metadata: Metadata = {
 
 export default function HowToPlayPage() {
   return (
-    <main className="legal-page how-to-play-page">
-      <article className="legal-page__inner">
-        <p className="legal-page__back">
+    <main className="htp-standalone">
+      <div className="htp-standalone__inner">
+        <p className="htp-standalone__back">
           <Link href="/">← Back to Stumpd</Link>
         </p>
         <StumpdHowToPlay />
-      </article>
+      </div>
     </main>
   );
 }

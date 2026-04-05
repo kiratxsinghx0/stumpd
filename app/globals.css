@@ -3021,282 +3021,311 @@ a.page-header-icon-btn {
   }
 }
 
-/* How to play page */
-.how-to-play-page.legal-page {
-  padding-top: 0.65rem;
+/* ── How to Play ── */
+
+.htp {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.htp__header {
+  text-align: center;
+  margin-bottom: 1.25rem;
   padding-bottom: 1rem;
+  border-bottom: 1px solid #e8ebe8;
 }
 
-/* Longhand only so left padding always wins over base `.legal-page__inner` */
-main.how-to-play-page.legal-page article.legal-page__inner {
-  padding-top: 0.65rem;
-  padding-bottom: 0.85rem;
-  padding-inline: clamp(1.65rem, 6.5vw, 2.35rem);
-}
-
-.how-to-play-page .legal-page__back {
-  margin-bottom: 0.5rem;
-}
-
-.how-to-play-page .legal-page__header {
-  margin-bottom: 0.6rem;
-  padding-bottom: 0.55rem;
-}
-
-.how-to-play-page .legal-page__title {
-  margin-bottom: 0.2rem;
-  font-size: clamp(1.25rem, 3.8vw, 1.55rem);
-}
-
-.how-to-play-page__header {
-  margin-bottom: 0;
-}
-
-.how-to-play-page__title {
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.how-to-play-page__lede {
-  margin: 0.2rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.35;
-  color: #3d3d3d;
-}
-
-.how-to-play-page .legal-page__intro-block.how-to-play-page__rules-wrap {
-  margin-bottom: 0.65rem;
-}
-
-.how-to-play-rules {
+.htp__title {
   margin: 0;
-  padding-left: 1.05rem;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: #2a2a2a;
+  font-size: clamp(1.4rem, 4.5vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #1a1a1a;
 }
 
-.how-to-play-rules li + li {
-  margin-top: 0.28rem;
+.htp__subtitle {
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  color: #666;
+  line-height: 1.45;
 }
 
-/* How to play â€” hint panel (reference: #F0F2F5, 12px radius, 1rem hint row) */
-.how-to-play-hint-panel {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 14px 16px 14px;
-  text-align: left;
-  background-color: #f0f2f5;
-  border: 1px solid #dfe3e8;
+.htp__card {
+  background: #fafbfa;
+  border: 1px solid #eef2ef;
   border-radius: 12px;
-  box-sizing: border-box;
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
 }
 
-/* Must beat `.legal-page__section p` (otherwise colors never apply) */
-.how-to-play-hint-panel > p.how-to-play-hint-panel__label {
-  margin: 0 0 8px;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-  color: #6b7280;
-  line-height: 1.25;
-}
+/* Steps */
 
-.how-to-play-hint-panel > p.how-to-play-hint-panel__line {
+.htp__step {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.htp__step + .htp__step {
+  margin-top: 0.75rem;
+}
+
+.htp__step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
   align-items: center;
-  gap: 0.2rem 0.45rem;
-  margin: 0 0 8px;
+  justify-content: center;
+  border-radius: 50%;
+  background: #6aaa64;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.htp__step-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #2a2a2a;
+  padding-top: 3px;
+}
+
+.htp__step-text kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #d1d5db;
+}
+
+/* Section titles */
+
+.htp__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: #999;
+}
+
+/* Color legend */
+
+.htp__color-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.htp__color-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.htp__tile {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-weight: 700;
   font-size: 1rem;
-  line-height: 1.5;
-  font-weight: 500;
-  color: #1f2937;
-}
-
-.how-to-play-hint-panel__item {
-  white-space: nowrap;
-}
-
-.how-to-play-hint-panel__dot {
-  display: inline;
-  margin: 0 0.15em;
-  color: #9ca3af;
-  font-weight: 500;
+  border: 2px solid transparent;
+  text-transform: uppercase;
   user-select: none;
 }
 
-.how-to-play-hint-panel > p.how-to-play-hint-panel__sub {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  font-weight: 400;
-  color: #6a6c6f;
+@media (min-width: 480px) {
+  .htp__tile {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
 }
 
-/* Stumpd how-to-play hint panel */
-.stumpd-hints-panel {
-  width: 100%;
-  margin: 0;
-  padding: 16px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0f9ff 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(20, 83, 45, 0.08);
+.htp__color-label {
+  font-size: 0.9375rem;
+  color: #333;
+  line-height: 1.4;
 }
 
-.stumpd-hints-panel__header {
-  margin-bottom: 12px;
+/* Example row */
+
+.htp__example-wrap {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e8ebe8;
 }
 
-.stumpd-hints-panel__title {
-  margin: 0 0 4px;
-  font-size: 0.75rem;
+.htp__example-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   font-weight: 700;
-  color: #166534;
+  color: #999;
 }
 
-.stumpd-hints-panel__subtitle {
+.htp__tile-row {
+  display: flex;
+  gap: 5px;
+}
+
+@media (min-width: 480px) {
+  .htp__tile-row {
+    gap: 6px;
+  }
+}
+
+/* Tip callout */
+
+.htp__tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+}
+
+.htp__tip-icon {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1.55;
+}
+
+.htp__tip-text {
   margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #92400e;
 }
 
-.stumpd-hints-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.htp__tip-text strong {
+  font-weight: 700;
 }
 
-.stumpd-hint-chip {
+/* Hints */
+
+.htp__hints-intro {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: #444;
+  line-height: 1.5;
+}
+
+.htp__hint-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.htp__hint-step {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
   background: #fff;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e8ebe8;
 }
 
-.stumpd-hint-chip__icon {
-  font-size: 1.1rem;
-  line-height: 1;
+.htp__hint-badge {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #166534;
+  color: #fff;
+  border-radius: 4px;
+  line-height: 1.7;
 }
 
-.stumpd-hint-chip__text {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.2;
+.htp__hint-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
-.how-to-play-page .legal-page__section.how-to-play-page__footnote-section {
-  margin-bottom: 0;
-  padding-top: 0.55rem;
+.htp__hint-label {
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 500;
 }
 
-.how-to-play-page__footnote {
+/* Footer */
+
+.htp__footer {
+  text-align: center;
+  padding-top: 0.25rem;
+}
+
+.htp__footer p {
   margin: 0;
   font-size: 0.8125rem;
-  line-height: 1.45;
-  color: #5a5a5a;
+  line-height: 1.7;
+  color: #999;
 }
 
-.how-to-play-page__footnote a {
-  color: #14532d;
+.htp__footer p + p {
+  margin-top: 0.15rem;
+}
+
+.htp__footer-link {
+  color: #166534;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.how-to-play-page__footnote a:hover {
+.htp__footer-link:hover {
   color: #0f3d21;
 }
 
-/* How to play â€” example rows (same tile system as grid; flip only on colored tiles) */
-.how-to-play-page__examples .how-to-play-tile-row {
+/* Standalone page wrapper (for /how-to-play route) */
+
+.htp-standalone {
+  min-height: 100dvh;
   display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: var(--tile-gap);
-  --tile-size: 40px;
-  --tile-gap: 5px;
-  --tile-font: 1.05rem;
-  --tile-border-width: 2px;
-  margin: 0.3rem 0 0.45rem;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(1.25rem, 4vw, 2rem) clamp(1rem, 5vw, 2rem);
+  background: #f5f6f5;
 }
 
-@media (min-width: 480px) {
-  .how-to-play-page__examples .how-to-play-tile-row {
-    --tile-size: 44px;
-    --tile-gap: 6px;
-    --tile-font: 1.15rem;
-  }
+.htp-standalone__inner {
+  width: 100%;
+  max-width: 520px;
 }
 
-@media (min-width: 768px) {
-  .how-to-play-page__examples .how-to-play-tile-row {
-    --tile-size: 48px;
-    --tile-font: 1.25rem;
-  }
+.htp-standalone__back {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
 }
 
-.how-to-play-example-tile {
-  border-radius: 2px;
+.htp-standalone__back a {
+  color: #166534;
+  text-decoration: none;
+  font-weight: 500;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .how-to-play-page__examples .how-to-play-example-tile.flipping {
-    animation: none !important;
-    background-color: var(--tile-bg) !important;
-    border-color: var(--tile-border) !important;
-    color: #fff !important;
-  }
-}
-
-.how-to-play-page .legal-page__section > h2 {
-  margin: 0 0 0.35rem;
-  font-size: 0.8125rem;
-}
-
-.how-to-play-example + .how-to-play-example {
-  margin-top: 0.55rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid #eef2ef;
-}
-
-.how-to-play-example__caption {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: #2a2a2a;
-}
-
-.how-to-play-example__caption strong {
-  font-weight: 800;
-}
-
-.how-to-play-page__hints-section {
-  margin-bottom: 0.45rem;
-}
-
-.how-to-play-page .legal-page__section {
-  margin-bottom: 0.55rem;
-}
-
-.how-to-play-page .legal-page__intro-block + .legal-page__section {
-  padding-top: 0.55rem;
-}
-
-.how-to-play-page .legal-page__section ~ .legal-page__section {
-  padding-top: 0.55rem;
+.htp-standalone__back a:hover {
+  text-decoration: underline;
 }
 
 /* Left sidebar â€” slides in from the left (portal under body) */
