@@ -1,73 +1,31 @@
 "use client";
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   registerAndSubscribe,
   canRequestNotifications,
   isAlreadySubscribed,
 } from "../services/push-notifications";
 
-const LS_KEY = "stumpd_reminder_asked";
-
-/**
- * Stored values:
- *   null            → never interacted, show both prompts
- *   "dismissed_once" → dismissed in the modal, still show game screen prompt
- *   "dismissed"     → dismissed twice (or on game screen), hide everything
- *   "subscribed"    → accepted, hide everything
- *   "denied"        → browser blocked, hide everything
- *   "error"         → something failed, hide everything
- */
-
-function subscribe(cb: () => void) {
-  window.addEventListener("storage", cb);
-  window.addEventListener("stumpd-reminder-update", cb);
-  return () => {
-    window.removeEventListener("storage", cb);
-    window.removeEventListener("stumpd-reminder-update", cb);
-  };
-}
-
-function getSnapshot() {
-  try {
-    return localStorage.getItem(LS_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function getServerSnapshot() {
-  return null;
-}
-
-function markAsked(value: string) {
-  localStorage.setItem(LS_KEY, value);
-  window.dispatchEvent(new Event("stumpd-reminder-update"));
-}
-
-function shouldShow(lsValue: string | null, variant: string): boolean {
-  if (!lsValue) return true;
-  if (lsValue === "dismissed_once" && variant === "compact") return true;
-  return false;
-}
+const LS_SUBSCRIBED_KEY = "stumpd_push_subscribed";
 
 type Props = {
   variant?: "default" | "compact" | "inline";
 };
 
 export default function ReminderPrompt({ variant = "default" }: Props) {
-  const lsValue = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const [ready, setReady] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
-
-  const visible = shouldShow(lsValue, variant);
+  const [canShow, setCanShow] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
-    if (isAlreadySubscribed() || !canRequestNotifications()) return;
-    const timer = setTimeout(() => setReady(true), variant === "inline" ? 0 : 600);
-    return () => clearTimeout(timer);
-  }, [visible, variant]);
+    if (isAlreadySubscribed()) return;
+    if (!canRequestNotifications()) return;
+    try {
+      if (localStorage.getItem(LS_SUBSCRIBED_KEY) === "true") return;
+    } catch { /* ignore */ }
+    setCanShow(true);
+  }, []);
 
   const handleAccept = useCallback(async () => {
     setStatus("loading");
@@ -75,29 +33,20 @@ export default function ReminderPrompt({ variant = "default" }: Props) {
       const ok = await registerAndSubscribe();
       if (ok) {
         setStatus("success");
-        markAsked("subscribed");
-        setTimeout(() => setReady(false), 2200);
+        setTimeout(() => setCanShow(false), 2200);
       } else {
-        markAsked("denied");
-        setReady(false);
+        setDismissed(true);
       }
     } catch {
-      markAsked("error");
-      setReady(false);
+      setDismissed(true);
     }
   }, []);
 
   const handleDismiss = useCallback(() => {
-    const current = getSnapshot();
-    if (variant === "inline" && !current) {
-      markAsked("dismissed_once");
-    } else {
-      markAsked("dismissed");
-    }
-    setReady(false);
-  }, [variant]);
+    setDismissed(true);
+  }, []);
 
-  if (!ready || !visible) return null;
+  if (!canShow || dismissed) return null;
 
   const successCls = status === "success" ? " reminder-prompt--success" : "";
 
