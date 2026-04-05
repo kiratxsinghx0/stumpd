@@ -6,8 +6,12 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
+const vapidSubject = process.env.VAPID_EMAIL!.startsWith("mailto:")
+  ? process.env.VAPID_EMAIL!
+  : `mailto:${process.env.VAPID_EMAIL}`;
+
 webPush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
+  vapidSubject,
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!,
 );
