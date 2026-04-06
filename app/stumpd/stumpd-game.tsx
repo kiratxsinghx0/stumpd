@@ -7,7 +7,6 @@ import StumpdHowToPlay from "./stumpd-how-to-play";
 import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT } from "../components/page-header";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
-import NextPuzzleTimer from "../components/timers";
 import { getInitialPlayerList, fetchIplPlayersFromAPI } from "./ipl-players";
 import type { IplPlayerRow } from "./ipl-players";
 import { fetchPuzzleToday } from "../services/ipl-api";
@@ -944,7 +943,6 @@ export default function Game() {
 
         <div className="game-shell__top">
           <p className="game-subtitle game-subtitle--stumpd">Guess the Cricketer</p>
-          {gameOver && shareDismissed ? <NextPuzzleTimer /> : null}
         </div>
 
         {/* Validation only — positioned out of flow so the grid does not jump */}
