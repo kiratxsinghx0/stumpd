@@ -113,6 +113,37 @@
   }
 }
 
+/*
+  PWA standalone — no browser chrome means ~100–130px more vertical space.
+  Lower the rem budget so the height formula yields larger tiles; the max cap
+  still prevents them from outgrowing the width.
+*/
+@media (display-mode: standalone) and (max-width: 480px) {
+  :root {
+    --tile-size: clamp(
+      38px,
+      min(
+        calc((100vw - 24px) / 5.1),
+        calc((100dvh - 20rem) / 6.2)
+      ),
+      62px
+    );
+  }
+}
+
+@media (display-mode: standalone) and (min-width: 420px) and (max-width: 480px) {
+  :root {
+    --tile-size: clamp(
+      42px,
+      min(
+        calc((100vw - 24px) / 5.1),
+        calc((100dvh - 20rem) / 6.2)
+      ),
+      72px
+    );
+  }
+}
+
 /* iPad Mini & similar (481–767px): between phone rules and 768px tablet — raise tile cap vs lone min-width:480 (52px) */
 @media (min-width: 481px) and (max-width: 767px) {
   :root {
@@ -219,12 +250,14 @@ main {
   }
 
   .game-shell__top {
-    flex-shrink: 0;
+    flex-shrink: 1;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 0;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .game-grid-wrap {
@@ -757,6 +790,12 @@ a.page-header-icon-btn {
   }
 }
 
+@media (display-mode: standalone) and (max-width: 480px) {
+  .game-subtitle.game-subtitle--stumpd {
+    display: none;
+  }
+}
+
 .game-prizes-notice {
   margin: 0 0 14px;
   padding: 0 12px;
@@ -1053,6 +1092,13 @@ a.page-header-icon-btn {
   .game-hint-card {
     padding: 8px 34px 6px;
     border-radius: 10px;
+    max-height: 5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-hint-card {
+    max-height: 4.5rem;
   }
 }
 
