@@ -11078,5 +11078,11 @@ export const iplPlayers: IplPlayerRow[] = [
             "shortened": true,
             "fullName": "Ross Taylor"
           }
-        }
+        },
+  { "name": "VAIBH", "meta": {"shortened":true,"fullName":"Vaibhav Suryavanshi"} },
+  { "name": "SURYA", "meta": {"shortened":true,"fullName":"Vaibhav Suryavanshi"} },
+  { "name": "RAJAT", "meta": {"shortened":false,"fullName":"Rajat Patidar"} },
+  { "name": "PATID", "meta": {"shortened":true,"fullName":"Rajat Patidar"} },
+  { "name": "HEINR", "meta": {"shortened":true,"fullName":"Heinrich Klaasen"} },
+  { "name": "KLAAS", "meta": {"shortened":true,"fullName":"Heinrich Klaasen"} },
 ];
