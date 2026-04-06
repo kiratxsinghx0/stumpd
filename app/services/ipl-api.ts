@@ -1,7 +1,3 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://fifabackend-production-2dd4.up.railway.app";
-
 export type PuzzleHintEntry = Record<string, unknown>;
 
 export type PuzzleData = {
@@ -16,11 +12,11 @@ export type PuzzleData = {
 };
 
 export async function fetchPlayers(): Promise<Response> {
-  return fetch(`${API_BASE}/api/ipl/players`, { cache: "no-store" });
+  return fetch("/api/ipl/players", { cache: "no-store" });
 }
 
 export async function fetchPlayerCount(): Promise<number> {
-  const res = await fetch(`${API_BASE}/api/ipl/players/count`, {
+  const res = await fetch("/api/ipl/players/count", {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`API returned ${res.status}`);
@@ -30,7 +26,7 @@ export async function fetchPlayerCount(): Promise<number> {
 }
 
 export async function fetchPuzzleToday(): Promise<PuzzleData> {
-  const res = await fetch(`${API_BASE}/api/ipl/puzzle/today`, {
+  const res = await fetch("/api/ipl/puzzle/today", {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`API returned ${res.status}`);
@@ -40,7 +36,7 @@ export async function fetchPuzzleToday(): Promise<PuzzleData> {
 }
 
 export async function fetchPuzzleByDay(day: number): Promise<PuzzleData> {
-  const res = await fetch(`${API_BASE}/api/ipl/puzzle/day/${day}`, {
+  const res = await fetch(`/api/ipl/puzzle/day/${day}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`API returned ${res.status}`);
