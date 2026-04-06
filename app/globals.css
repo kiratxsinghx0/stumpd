@@ -4305,3 +4305,45 @@ a.page-header-icon-btn {
     font-size: 0.8rem;
   }
 }
+
+/* -- iOS "Add to Home Screen" variant -- */
+
+.reminder-ios .reminder-ios__text {
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.reminder-ios__share-icon {
+  display: inline-block;
+  vertical-align: -0.2em;
+  color: #007aff;
+  margin: 0 1px;
+  flex-shrink: 0;
+}
+
+.reminder-prompt--compact.reminder-ios {
+  background: linear-gradient(135deg, #eef6ff, #e3effe);
+  border-color: #a8c8f0;
+}
+
+.reminder-prompt--compact.reminder-ios .reminder-prompt__text {
+  color: #1a3a5c;
+}
+
+.reminder-prompt--compact.reminder-ios .reminder-prompt__btn--dismiss {
+  color: #5a7da0;
+}
+
+.reminder-prompt--compact.reminder-ios .reminder-prompt__btn--dismiss:hover:not(:disabled) {
+  color: #1a3a5c;
+}
+
+.reminder-inline.reminder-ios {
+  background: linear-gradient(135deg, #eef6ff, #e3effe);
+  border-color: #a8c8f0;
+}
+
+.reminder-inline.reminder-ios .reminder-inline__text {
+  color: #1a3a5c;
+  white-space: normal;
+}

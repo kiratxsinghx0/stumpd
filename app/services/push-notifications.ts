@@ -10,6 +10,24 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...raw].map((ch) => ch.charCodeAt(0)));
 }
 
+export function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+export function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    ("standalone" in navigator && (navigator as { standalone?: boolean }).standalone === true) ||
+    window.matchMedia("(display-mode: standalone)").matches
+  );
+}
+
+export function needsIOSInstallPrompt(): boolean {
+  return isIOS() && !isStandalone();
+}
+
 export function canRequestNotifications(): boolean {
   return (
     typeof window !== "undefined" &&
