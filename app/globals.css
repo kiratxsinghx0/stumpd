@@ -16,7 +16,7 @@
 
 :root {
   /* Tiles â€” mobile first */
-  --tile-size: min(52px, max(28px, calc((100dvh - 30rem) / 6.5)));
+  --tile-size: min(52px, max(28px, calc((100svh - 30rem) / 6.5)));
   --tile-gap: 5px;
   --tile-font: clamp(0.75rem, calc(var(--tile-size) * 0.38), 1.5rem);
   --tile-border-width: 2px;
@@ -34,7 +34,7 @@
 
 @media (min-width: 480px) {
   :root {
-    --tile-size: min(52px, max(28px, calc((100dvh - 30rem) / 6.5)));
+    --tile-size: min(52px, max(28px, calc((100svh - 30rem) / 6.5)));
     --tile-gap: 5px;
     --keyboard-gap: 4px;
     --keyboard-row-gap: 7px;
@@ -45,7 +45,7 @@
 
 @media (min-width: 768px) {
   :root {
-    --tile-size: min(58px, max(30px, calc((100dvh - 31rem) / 6.5)));
+    --tile-size: min(68px, max(30px, calc((100svh - 31rem) / 6.5)));
     --keyboard-gap: 4px;
     --key-height: 60px;
     --key-font: 0.85rem;
@@ -56,13 +56,19 @@
 
 @media (min-width: 1024px) {
   :root {
-    --tile-size: min(62px, max(32px, calc((100dvh - 32rem) / 6.5)));
+    --tile-size: min(72px, max(32px, calc((100svh - 32rem) / 6.5)));
     --keyboard-gap: 5px;
     --keyboard-row-gap: 8px;
     --key-height: 64px;
     --key-font: 0.875rem;
     --key-radius: 6px;
     --keyboard-max-width: 500px;
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --tile-size: min(78px, max(34px, calc((100svh - 32rem) / 6.5)));
   }
 }
 
@@ -76,7 +82,7 @@
       38px,
       min(
         calc((100vw - 24px) / 5.1),
-        calc((100dvh - 24rem) / 6.2)
+        calc((100svh - 24rem) / 6.2)
       ),
       62px
     );
@@ -106,7 +112,7 @@
       42px,
       min(
         calc((100vw - 24px) / 5.1),
-        calc((100dvh - 24rem) / 6.2)
+        calc((100svh - 24rem) / 6.2)
       ),
       72px
     );
@@ -116,7 +122,7 @@
 /* iPad Mini & similar (481–767px): between phone rules and 768px tablet — raise tile cap vs lone min-width:480 (52px) */
 @media (min-width: 481px) and (max-width: 767px) {
   :root {
-    --tile-size: min(74px, max(28px, calc((100dvh - 30rem) / 6.5)));
+    --tile-size: min(74px, max(28px, calc((100svh - 30rem) / 6.5)));
   }
 }
 
