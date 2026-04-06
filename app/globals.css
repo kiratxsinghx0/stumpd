@@ -669,7 +669,7 @@ a.page-header-icon-btn {
 @media (max-width: 767px) {
   .game-shell {
     padding-top: 2px;
-    padding-bottom: max(2px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: 2px;
   }
 }
 
@@ -1058,7 +1058,7 @@ a.page-header-icon-btn {
   }
 
   .game-page__keyboard {
-    padding-bottom: max(4px, env(safe-area-inset-bottom, 4px));
+    padding-bottom: 4px;
   }
 }
 
@@ -4123,6 +4123,7 @@ a.page-header-icon-btn {
 
 /* ── See Results button (replaces keyboard after game over) ── */
 .game-page__see-results {
+  flex-shrink: 0;
   width: 100%;
   max-width: 484px;
   margin: 0 auto;

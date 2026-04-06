@@ -51,6 +51,10 @@ export const metadata: Metadata = {
     description: "Guess the secret IPL cricketer in 6 tries!",
     images: [new URL("/og-image.png", siteUrl).toString()],
   },
+  icons: {
+    icon: "/stumpd-logo.png",
+    apple: "/stumpd-logo.png",
+  },
   manifest: "/manifest.json",
 };
 
