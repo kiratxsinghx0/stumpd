@@ -390,6 +390,7 @@ export default function Game() {
   const shellVpClass = useGameShellViewportClass();
 
   const [puzzleData, setPuzzleData] = useState<PuzzleData | null>(null);
+  const [puzzleError, setPuzzleError] = useState(false);
 
   useEffect(() => {
     const cached = readCachedPuzzle();
@@ -398,12 +399,15 @@ export default function Game() {
     ensureFreshPuzzle()
       .then((fresh) => {
         cachePuzzle(fresh);
+        setPuzzleError(false);
         setPuzzleData((prev) => {
           if (prev && prev.day === fresh.day) return prev;
           return fresh;
         });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!readCachedPuzzle()) setPuzzleError(true);
+      });
   }, []);
 
   const playerToGuess = puzzleData
@@ -436,13 +440,15 @@ export default function Game() {
   const nudgeShownRef = useRef(false);
 
   const [playerList, setPlayerList] = useState<IplPlayerRow[]>(iplPlayers);
+  const [playersLoading, setPlayersLoading] = useState(true);
 
   useEffect(() => {
     fetchIplPlayersFromAPI()
       .then((data) => {
         if (data) setPlayerList(data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setPlayersLoading(false));
   }, []);
 
   const validGuesses = useMemo(
@@ -894,6 +900,41 @@ export default function Game() {
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
   }, [handleKey]);
+
+  if (puzzleError && !puzzleData) {
+    return (
+      <div className="game-page__content">
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
+        <div className="game-loading">
+          <p className="game-loading__text">Could not load today&apos;s puzzle.</p>
+          <button
+            type="button"
+            className="game-loading__retry"
+            onClick={() => {
+              setPuzzleError(false);
+              ensureFreshPuzzle()
+                .then((fresh) => { cachePuzzle(fresh); setPuzzleData(fresh); })
+                .catch(() => setPuzzleError(true));
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!puzzleData || (playersLoading && playerList.length === 0)) {
+    return (
+      <div className="game-page__content">
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
+        <div className="game-loading">
+          <div className="game-loading__spinner" />
+          <p className="game-loading__text">Loading puzzle…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -71,14 +71,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <Script
-          strategy="afterInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5063452717128088"
-          crossOrigin="anonymous"
-        />
-      </head>
-
       <body
         style={{
           fontFamily:
@@ -88,6 +80,12 @@ export default function RootLayout({
         {children}
 
         <CookieBanner />
+
+        <Script
+          strategy="afterInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5063452717128088"
+          crossOrigin="anonymous"
+        />
       </body>
     </html>
   );
