@@ -11,6 +11,24 @@ export type PuzzleData = {
   setAt: string;
 };
 
+const ENCODE_KEY = "fw26k";
+
+function xorDecode(encoded: string, key: string): string {
+  const raw = atob(encoded);
+  let result = "";
+  for (let i = 0; i < raw.length; i++) {
+    result += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  }
+  return result;
+}
+
+function decodePuzzle(data: PuzzleData): PuzzleData {
+  if (typeof data.fullName === "string") {
+    return { ...data, fullName: xorDecode(data.fullName, ENCODE_KEY) };
+  }
+  return data;
+}
+
 export async function fetchPlayers(): Promise<Response> {
   return fetch("/api/ipl/players", { cache: "no-store" });
 }
@@ -32,7 +50,7 @@ export async function fetchPuzzleToday(): Promise<PuzzleData> {
   if (!res.ok) throw new Error(`API returned ${res.status}`);
   const json = await res.json();
   if (!json.success || !json.data) throw new Error("Unexpected response shape");
-  return json.data as PuzzleData;
+  return decodePuzzle(json.data as PuzzleData);
 }
 
 export async function fetchPuzzleByDay(day: number): Promise<PuzzleData> {
@@ -42,5 +60,5 @@ export async function fetchPuzzleByDay(day: number): Promise<PuzzleData> {
   if (!res.ok) throw new Error(`API returned ${res.status}`);
   const json = await res.json();
   if (!json.success || !json.data) throw new Error("Unexpected response shape");
-  return json.data as PuzzleData;
+  return decodePuzzle(json.data as PuzzleData);
 }
