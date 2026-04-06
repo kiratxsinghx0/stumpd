@@ -52,6 +52,10 @@ export const metadata: Metadata = {
     images: [new URL("/og-image.png", siteUrl).toString()],
   },
   manifest: "/manifest.json",
+  icons: {
+    icon: "/stumpd-logo.png",
+    apple: "/stumpd-logo.png",
+  },
 };
 
 export const viewport: Viewport = {
