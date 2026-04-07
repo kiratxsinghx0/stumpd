@@ -929,7 +929,6 @@ export const iplPlayers: IplPlayerRow[] = [
   { "name": "ATHER", "meta": {"shortened":true,"fullName":"Mike Atherton"} },
   { "name": "EDMON", "meta": {"shortened":true,"fullName":"Phil Edmonds"} },
   { "name": "EMBUR", "meta": {"shortened":true,"fullName":"John Emburey"} },
-  { "name": "DEFRE", "meta": {"shortened":true,"fullName":"Phil Defreitas"} },
   { "name": "OWAIS", "meta": {"shortened":false,"fullName":"Owais Shah"} },
   { "name": "MARCU", "meta": {"shortened":true,"fullName":"Marcus Trescothick"} },
   { "name": "TRESC", "meta": {"shortened":true,"fullName":"Marcus Trescothick"} },
