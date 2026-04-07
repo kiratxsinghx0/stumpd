@@ -57,11 +57,12 @@ export async function register(
   email: string,
   password: string,
   gameResult?: GameResultPayload,
+  baselineStats?: { gamesPlayed: number; gamesWon: number; currentStreak: number; maxStreak: number },
 ): Promise<{ user: AuthUser; token: string }> {
   const res = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, gameResult }),
+    body: JSON.stringify({ email, password, gameResult, baselineStats }),
   });
   const json = await res.json();
   if (!res.ok || !json.success) throw new Error(json.message || "Registration failed");

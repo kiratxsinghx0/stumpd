@@ -26,17 +26,26 @@ export async function fetchLiveStats(): Promise<LiveStats> {
   }
 }
 
+const LS_INCREMENT_PREFIX = "stumpd_live_inc_";
+
 export async function incrementLiveStats(
   puzzleDay: number,
   won: boolean,
   numGuesses: number,
 ): Promise<void> {
   try {
+    const key = `${LS_INCREMENT_PREFIX}${puzzleDay}`;
+    if (typeof window !== "undefined" && localStorage.getItem(key)) return;
+
     await fetch("/api/live-stats/increment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ puzzle_day: puzzleDay, won, num_guesses: numGuesses }),
     });
+
+    if (typeof window !== "undefined") {
+      try { localStorage.setItem(key, "1"); } catch { /* */ }
+    }
   } catch {
     /* silent */
   }

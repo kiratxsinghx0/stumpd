@@ -823,10 +823,9 @@ export default function Game() {
           };
           setLastGameResult(payload);
 
+          incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses).catch(() => {});
           if (isLoggedIn()) {
             postGameResult(payload).catch(() => {});
-          } else {
-            incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses).catch(() => {});
           }
         }
 
