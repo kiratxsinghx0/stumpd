@@ -4,3 +4,10 @@ export type GameStats = {
   currentStreak: number;
   maxStreak: number;
 };
+
+export type LiveStats = {
+  puzzleDay: number | null;
+  totalPlayed: number;
+  totalWon: number;
+  distribution: number[];
+};

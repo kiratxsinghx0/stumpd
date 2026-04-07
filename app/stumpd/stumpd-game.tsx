@@ -11,9 +11,12 @@ import { getInitialPlayerList, fetchIplPlayersFromAPI } from "./ipl-players";
 import type { IplPlayerRow } from "./ipl-players";
 import { fetchPuzzleToday } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
-import type { GameStats } from "../components/games";
+import type { GameStats, LiveStats } from "../components/games";
 import { DEFAULT_STUMPD_STATS, readStats, recordGameResult } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
+import { fetchLiveStats, incrementLiveStats } from "../services/live-stats-api";
+import { postGameResult, isLoggedIn } from "../services/auth-api";
+import type { GameResultPayload } from "../services/auth-api";
 
 function findHint<T = string>(hints: PuzzleHintEntry[], key: string): T | undefined {
   const entry = hints.find((h) => h[key] !== undefined);
@@ -407,6 +410,8 @@ export default function Game() {
       .catch(() => {
         if (!readCachedPuzzle()) setPuzzleError(true);
       });
+
+    fetchLiveStats().then(setLiveStats).catch(() => {});
   }, []);
 
   const playerToGuess = puzzleData
@@ -429,6 +434,8 @@ export default function Game() {
   const [returningUserHints, setReturningUserHints] = useState(false);
   const [usedTriviaIndices, setUsedTriviaIndices] = useState<number[]>([]);
   const [stats, setStats] = useState<GameStats>(DEFAULT_STUMPD_STATS);
+  const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
+  const [lastGameResult, setLastGameResult] = useState<GameResultPayload | null>(null);
   const [timerStarted, setTimerStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [cookieConsentDone, setCookieConsentDone] = useState(false);
@@ -806,6 +813,21 @@ export default function Game() {
         const justLost = !justWon && completedRowIndex + 1 === MAX_GUESSES;
         if (justWon || justLost) {
           setStats(recordGameResult(justWon, currentGameId));
+
+          const payload: GameResultPayload = {
+            puzzle_day: Number(currentGameId),
+            won: justWon,
+            num_guesses: completedRowIndex + 1,
+            time_seconds: elapsedSeconds,
+            hints_used: allUnlockedHints.length,
+          };
+          setLastGameResult(payload);
+
+          if (isLoggedIn()) {
+            postGameResult(payload).catch(() => {});
+          } else {
+            incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses).catch(() => {});
+          }
         }
 
         if (justWon && !prefersReducedMotion()) {
@@ -1258,6 +1280,11 @@ export default function Game() {
           puzzleDay={puzzleData?.day}
           hintsUsed={allUnlockedHints.length}
           maxHints={HINT_LADDER.length + 1}
+          liveStats={liveStats}
+          gameResultPayload={lastGameResult}
+          onAuthChange={() => {
+            fetchLiveStats().then(setLiveStats).catch(() => {});
+          }}
           onClose={() => {
             setShowModal(false);
             setShareDismissed(true);

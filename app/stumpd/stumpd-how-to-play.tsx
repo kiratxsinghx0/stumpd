@@ -61,6 +61,34 @@ export default function StumpdHowToPlay() {
             Use the clues to crack it in 6 guesses or fewer
           </p>
         </div>
+
+        <div className="htp__name-hint">
+          <p className="htp__name-hint-label">
+            💡 Names are shortened to <strong>5 letters</strong>
+          </p>
+          <div className="htp__name-hint-example">
+            <span className="htp__name-hint-full">YUVRAJ</span>
+            <span className="htp__name-hint-arrow">→</span>
+            <div className="htp__tile-row">
+              <Tile letter="Y" status="empty" />
+              <Tile letter="U" status="empty" />
+              <Tile letter="V" status="empty" />
+              <Tile letter="R" status="empty" />
+              <Tile letter="A" status="empty" />
+            </div>
+          </div>
+          <div className="htp__name-hint-example">
+            <span className="htp__name-hint-full">HARDIK</span>
+            <span className="htp__name-hint-arrow">→</span>
+            <div className="htp__tile-row">
+              <Tile letter="H" status="empty" />
+              <Tile letter="A" status="empty" />
+              <Tile letter="R" status="empty" />
+              <Tile letter="D" status="empty" />
+              <Tile letter="I" status="empty" />
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="htp__card">
@@ -94,17 +122,6 @@ export default function StumpdHowToPlay() {
           </div>
         </div>
       </section>
-
-      <div className="htp__tip">
-        <span className="htp__tip-icon" aria-hidden>
-          💡
-        </span>
-        <p className="htp__tip-text">
-          Names are shortened to 5 letters — it can be a first or last name.
-          <br />
-          Example: <strong>YUVRAJ</strong> → <strong>YUVRA</strong>
-        </p>
-      </div>
 
       <section className="htp__card">
         <h2 className="htp__section-title">Hints</h2>

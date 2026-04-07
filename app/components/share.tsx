@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { GameStats } from "./games";
+import type { GameStats, LiveStats } from "./games";
 import NextPuzzleTimer from "./timers";
 import ReminderPrompt from "./reminder-prompt";
+import { register, login, isLoggedIn } from "../services/auth-api";
+import type { GameResultPayload } from "../services/auth-api";
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -13,6 +15,9 @@ const STATUS_EMOJI: Record<string, string> = {
 
 const WORD_LENGTH = 5;
 
+const FALLBACK_DISTRIBUTION = [5, 12, 28, 30, 17, 8];
+const FALLBACK_PLAYED_TODAY = 8_901;
+
 type Props = {
   won: boolean;
   answer: string;
@@ -21,28 +26,24 @@ type Props = {
   stats: GameStats;
   elapsedSeconds: number;
   onClose: () => void;
-  /** Stumpd-specific: game title shown in share card (e.g. "Stumpd") */
   gameTitle?: string;
-  /** Stumpd-specific: puzzle day number */
   puzzleDay?: number;
-  /** Stumpd-specific: how many hint tokens were spent */
   hintsUsed?: number;
-  /** Stumpd-specific: maximum hint tokens available */
   maxHints?: number;
+  liveStats?: LiveStats | null;
+  gameResultPayload?: GameResultPayload | null;
+  onAuthChange?: () => void;
 };
-
-const DISTRIBUTION = [5, 12, 28, 30, 17, 8];
-const PLAYED_TODAY = 8_901;
 
 function formatCompactCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
   return String(n);
 }
 
-function getTopPercent(guessCount: number): number {
+function getTopPercent(guessCount: number, dist: number[]): number {
   let cumulative = 0;
-  for (let i = 0; i < guessCount && i < DISTRIBUTION.length; i++) {
-    cumulative += DISTRIBUTION[i];
+  for (let i = 0; i < guessCount && i < dist.length; i++) {
+    cumulative += dist[i];
   }
   return cumulative;
 }
@@ -109,17 +110,20 @@ function SharePersonalStats({ stats }: { stats: GameStats }) {
   );
 }
 
-/** Launch social proof — compact grid so the modal stays scannable */
 function ShareCommunityPulse({
   variant,
   beatPercent,
   guessedInPercent,
   guessCount,
+  playedToday,
+  solvedPercent,
 }: {
   variant: "win" | "loss";
   beatPercent?: number;
   guessedInPercent?: number;
   guessCount?: number;
+  playedToday: number;
+  solvedPercent: number;
 }) {
   if (variant === "win" && beatPercent != null && guessedInPercent != null && guessCount != null) {
     return (
@@ -127,7 +131,7 @@ function ShareCommunityPulse({
         <p className="share-community-pulse__eyebrow">Live from today&apos;s players</p>
         <div className="share-community-pulse__grid">
           <div className="share-community-pulse__cell">
-            <span className="share-community-pulse__value">{formatCompactCount(PLAYED_TODAY)}</span>
+            <span className="share-community-pulse__value">{formatCompactCount(playedToday)}</span>
             <span className="share-community-pulse__label">played today</span>
           </div>
           <div className="share-community-pulse__cell">
@@ -142,20 +146,23 @@ function ShareCommunityPulse({
       </div>
     );
   }
+
+  const modeLabel = "5+";
+
   return (
     <div className="share-community-pulse share-community-pulse--loss">
       <p className="share-community-pulse__eyebrow">You&apos;re not alone</p>
       <div className="share-community-pulse__grid">
         <div className="share-community-pulse__cell">
-          <span className="share-community-pulse__value">18%</span>
+          <span className="share-community-pulse__value">{solvedPercent}%</span>
           <span className="share-community-pulse__label">solved today</span>
         </div>
         <div className="share-community-pulse__cell">
-          <span className="share-community-pulse__value">5+</span>
+          <span className="share-community-pulse__value">{modeLabel}</span>
           <span className="share-community-pulse__label">tries for most</span>
         </div>
         <div className="share-community-pulse__cell">
-          <span className="share-community-pulse__value">{formatCompactCount(PLAYED_TODAY)}</span>
+          <span className="share-community-pulse__value">{formatCompactCount(playedToday)}</span>
           <span className="share-community-pulse__label">played today</span>
         </div>
       </div>
@@ -163,12 +170,12 @@ function ShareCommunityPulse({
   );
 }
 
-function DistributionChart({ userGuess, won }: { userGuess: number; won: boolean }) {
-  const maxVal = Math.max(...DISTRIBUTION);
+function DistributionChart({ userGuess, won, distribution }: { userGuess: number; won: boolean; distribution: number[] }) {
+  const maxVal = Math.max(...distribution);
   return (
     <div className="share-dist share-dist--compact">
       <h3 className="share-dist__title">Guess Distribution</h3>
-      {DISTRIBUTION.map((pct, i) => {
+      {distribution.map((pct, i) => {
         const num = i + 1;
         const isHl = won && num === userGuess;
         const barW = Math.max((pct / maxVal) * 100, 8);
@@ -270,20 +277,117 @@ function SharePreviewCard({
   );
 }
 
+function SignupPrompt({
+  gameResultPayload,
+  onAuthChange,
+}: {
+  gameResultPayload?: GameResultPayload | null;
+  onAuthChange?: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [mode, setMode] = useState<"register" | "login">("register");
+
+  if (isLoggedIn() || done) {
+    return done ? (
+      <div className="share-signup share-signup--done">
+        <p className="share-signup__success">Stats saved to your account!</p>
+      </div>
+    ) : null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      if (mode === "register") {
+        await register(email, password, gameResultPayload ?? undefined);
+      } else {
+        await login(email, password);
+      }
+      setDone(true);
+      onAuthChange?.();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      if (mode === "register" && msg.includes("already registered")) {
+        setError("Email already registered — try logging in instead");
+        setMode("login");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="share-signup">
+      <p className="share-signup__eyebrow">
+        {mode === "register" ? "Save progress across devices" : "Welcome back"}
+      </p>
+      <form className="share-signup__form" onSubmit={handleSubmit}>
+        <input
+          className="share-signup__input"
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+        <input
+          className="share-signup__input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+          autoComplete={mode === "register" ? "new-password" : "current-password"}
+        />
+        {error && <p className="share-signup__error">{error}</p>}
+        <button
+          type="submit"
+          className="share-signup__btn"
+          disabled={loading}
+        >
+          {loading ? "..." : mode === "register" ? "Save & Continue" : "Log in"}
+        </button>
+      </form>
+      <button
+        type="button"
+        className="share-signup__toggle"
+        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); }}
+      >
+        {mode === "register" ? "Already have an account? Log in" : "New here? Create account"}
+      </button>
+    </div>
+  );
+}
+
 function formatElapsed(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints }: Props) {
+export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints, liveStats, gameResultPayload, onAuthChange }: Props) {
   void answer;
   const [copied, setCopied] = useState(false);
   const isStumpd = !!gameTitle;
 
-  const topPercent = getTopPercent(guessCount);
+  const dist = liveStats?.distribution ?? FALLBACK_DISTRIBUTION;
+  const playedToday = liveStats?.totalPlayed ?? FALLBACK_PLAYED_TODAY;
+  const totalWon = liveStats?.totalWon ?? 0;
+  const solvedPercent = playedToday > 0 ? Math.round((totalWon / playedToday) * 100) : 18;
+
+  const topPercent = getTopPercent(guessCount, dist);
   const beatPercent = 100 - topPercent;
-  const guessedInPercent = DISTRIBUTION[guessCount - 1] ?? 10;
+  const guessedInPercent = dist[guessCount - 1] ?? 10;
   const correctLetters = bestCorrectCount(statuses);
 
   const emojiGrid = statuses
@@ -379,19 +483,30 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 beatPercent={beatPercent}
                 guessedInPercent={guessedInPercent}
                 guessCount={guessCount}
+                playedToday={playedToday}
+                solvedPercent={solvedPercent}
               />
-              <DistributionChart userGuess={guessCount} won={won} />
+              <DistributionChart userGuess={guessCount} won={won} distribution={dist} />
             </>
           ) : (
             <>
               <LossHero correctLetters={correctLetters} elapsedSeconds={elapsedSeconds} />
               <SharePersonalStats stats={stats} />
-              <ShareCommunityPulse variant="loss" />
+              <ShareCommunityPulse
+                variant="loss"
+                playedToday={playedToday}
+                solvedPercent={solvedPercent}
+              />
               <div className="share-loss-timer">
                 <NextPuzzleTimer />
               </div>
             </>
           )}
+
+          <SignupPrompt
+            gameResultPayload={gameResultPayload}
+            onAuthChange={onAuthChange}
+          />
 
           <SharePreviewCard
             statuses={statuses}
