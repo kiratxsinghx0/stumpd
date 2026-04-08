@@ -413,10 +413,9 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
   const guessedInPercent = dist[guessCount - 1] ?? 10;
   const correctLetters = bestCorrectCount(statuses);
 
-  const emojiGrid = statuses
+  const gridRows = statuses
     .slice(0, guessCount)
-    .map(row => row.map(s => STATUS_EMOJI[s]).join(""))
-    .join("\n");
+    .map(row => row.map(s => STATUS_EMOJI[s]).join(""));
 
   const timeStr = formatElapsed(elapsedSeconds);
   const summaryLine = isStumpd
@@ -429,9 +428,16 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
 
   const handleCopy = () => {
     const header = `🏏 Stumpd #${puzzleDay ?? "?"}`;
-    const badgeLine = `${badge.emoji} ${badge.label}`;
-    const streakLine = stats.currentStreak > 1 ? `\n🔥 ${stats.currentStreak}-day streak` : "";
+    const streakLine = stats.currentStreak > 1 ? `🔥 ${stats.currentStreak}-day streak` : "";
     const strikeRate = Math.round((WORD_LENGTH * 100) / (guessCount + elapsedSeconds / 60));
+
+    // Trailing double-space on each non-blank line produces a markdown <br>,
+    // so line breaks survive Reddit / Discord / any markdown renderer.
+    const fmt = (lines: (string | undefined)[]) =>
+      lines
+        .filter((l): l is string => l !== undefined)
+        .map(l => (l === "" ? "" : l + "  "))
+        .join("\n");
 
     let full: string;
     if (won) {
@@ -440,35 +446,31 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
         ? "Last-ball finish!"
         : `Chased it in ${guessCount} ${ballsWord}`;
       const hintsFlex = hintsUsed === 0 ? " · No hints" : "";
-      const lines = [
+      full = fmt([
         header,
         "",
-        badgeLine,
+        `${badge.emoji} ${badge.label}`,
         `${chaseLine}${hintsFlex}`,
-        `⚡ SR: ${strikeRate}`,
-        `⏱ ${timeStr}`,
-        streakLine,
+        `⚡ SR: ${strikeRate} | ⏱ ${timeStr}`,
+        streakLine || undefined,
         "",
-        emojiGrid,
+        ...gridRows,
         "",
         "Can you beat me?",
         SITE_URL,
-      ];
-      full = lines.filter(l => l !== undefined).join("\n");
+      ]);
     } else {
-      const lines = [
+      full = fmt([
         header,
         "",
-        "🦆 Golden Duck",
-        `Bowled out · ${correctLetters}/${WORD_LENGTH} letters`,
+        `🦆 Golden Duck · Bowled out · ${correctLetters}/${WORD_LENGTH} letters`,
         `⏱ ${timeStr}`,
         "",
-        emojiGrid,
+        ...gridRows,
         "",
         "Tomorrow's a new innings",
         SITE_URL,
-      ];
-      full = lines.join("\n");
+      ]);
     }
 
     navigator.clipboard.writeText(full).then(() => {

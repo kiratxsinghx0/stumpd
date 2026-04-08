@@ -1225,7 +1225,7 @@ export default function Game() {
             <span className="game-shortname-notice__tag">INFO</span>
             <span className="game-shortname-notice__divider" />
             <p className="game-shortname-notice__text">
-              Names trimmed to 5 letters
+              Only first 5 letters of each name
               <span className="game-shortname-notice__example">
                 <strong>YUVRAJ</strong>
                 <span className="game-shortname-notice__arrow">→</span>

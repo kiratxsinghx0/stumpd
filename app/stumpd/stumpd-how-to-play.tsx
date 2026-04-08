@@ -64,7 +64,7 @@ export default function StumpdHowToPlay() {
 
         <div className="htp__name-hint">
           <p className="htp__name-hint-label">
-            💡 Names are shortened to <strong>5 letters</strong>
+            💡 Only the first <strong>5 letters</strong> of each name are used
           </p>
           <div className="htp__name-hint-example">
             <span className="htp__name-hint-full">YUVRAJ</span>
@@ -78,14 +78,14 @@ export default function StumpdHowToPlay() {
             </div>
           </div>
           <div className="htp__name-hint-example">
-            <span className="htp__name-hint-full">HARDIK</span>
+            <span className="htp__name-hint-full">SEHWAG</span>
             <span className="htp__name-hint-arrow">→</span>
             <div className="htp__tile-row">
+              <Tile letter="S" status="empty" />
+              <Tile letter="E" status="empty" />
               <Tile letter="H" status="empty" />
+              <Tile letter="W" status="empty" />
               <Tile letter="A" status="empty" />
-              <Tile letter="R" status="empty" />
-              <Tile letter="D" status="empty" />
-              <Tile letter="I" status="empty" />
             </div>
           </div>
         </div>
