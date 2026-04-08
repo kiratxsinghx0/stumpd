@@ -394,6 +394,7 @@ export default function Game() {
 
   const [puzzleData, setPuzzleData] = useState<PuzzleData | null>(null);
   const [puzzleError, setPuzzleError] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     const cached = readCachedPuzzle();
@@ -945,24 +946,67 @@ export default function Game() {
     return () => window.removeEventListener("keydown", listener);
   }, [handleKey]);
 
-  if (puzzleError && !puzzleData) {
+  const handleRetry = useCallback(() => {
+    setRetrying(true);
+    setPuzzleError(false);
+    ensureFreshPuzzle()
+      .then((fresh) => {
+        cachePuzzle(fresh);
+        setPuzzleData(fresh);
+        setRetrying(false);
+      })
+      .catch(() => {
+        setPuzzleError(true);
+        setRetrying(false);
+      });
+  }, []);
+
+  if ((puzzleError || retrying) && !puzzleData) {
+    const ghostColors = [
+      ["g","y","a","a","a"],
+      ["a","g","a","y","a"],
+      ["a","a","g","a","y"],
+      ["","","","",""],
+      ["","","","",""],
+      ["","","","",""],
+    ];
     return (
       <div className="game-page__content">
         <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
-        <div className="game-loading">
-          <p className="game-loading__text">Could not load today&apos;s puzzle.</p>
-          <button
-            type="button"
-            className="game-loading__retry"
-            onClick={() => {
-              setPuzzleError(false);
-              ensureFreshPuzzle()
-                .then((fresh) => { cachePuzzle(fresh); setPuzzleData(fresh); })
-                .catch(() => setPuzzleError(true));
-            }}
-          >
-            Retry
-          </button>
+        <div className="game-error">
+          <div className="game-error__ghost-grid" aria-hidden="true">
+            {ghostColors.map((row, ri) => (
+              <div key={ri} className="game-error__ghost-row">
+                {row.map((c, ci) => (
+                  <div
+                    key={ci}
+                    className={`game-error__ghost-tile${c ? ` game-error__ghost-tile--${c}` : ""}`}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="game-error__card">
+            <div className="game-error__icon-wrap">
+              <span className="game-error__emoji">🏏</span>
+            </div>
+            <h2 className="game-error__title">Clean Bowled!</h2>
+            <p className="game-error__subtitle">
+              Today&apos;s puzzle is taking a bit longer to load. Give it another shot!
+            </p>
+            <button
+              type="button"
+              className="game-error__retry"
+              onClick={handleRetry}
+              disabled={retrying}
+            >
+              {retrying ? (
+                <span className="game-error__retry-spinner" />
+              ) : (
+                "Try Again"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );

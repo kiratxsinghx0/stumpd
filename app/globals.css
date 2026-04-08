@@ -4628,6 +4628,187 @@ a.page-header-icon-btn {
   white-space: normal;
 }
 
+/* ── Game error state (polished fallback when puzzle fails to load) ── */
+@keyframes game-error-fade-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes game-error-icon-pop {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+  60%  { transform: scale(1.1) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes game-error-ghost-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.game-error {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px 40px;
+  min-height: 55vh;
+  overflow: hidden;
+}
+
+/* ── Ghost grid: 6×5 with colored tiles to mimic a game in progress ── */
+.game-error__ghost-grid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 1.3vw, 6px);
+  pointer-events: none;
+  z-index: 0;
+  animation: game-error-ghost-fade 0.8s ease-out both;
+}
+
+.game-error__ghost-row {
+  display: flex;
+  gap: clamp(4px, 1.3vw, 6px);
+  justify-content: center;
+}
+
+.game-error__ghost-tile {
+  width: clamp(42px, 14vw, 58px);
+  height: clamp(42px, 14vw, 58px);
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  background: transparent;
+  opacity: 0.35;
+}
+
+.game-error__ghost-tile--g {
+  background: #6aaa64;
+  border-color: #6aaa64;
+  opacity: 0.14;
+}
+
+.game-error__ghost-tile--y {
+  background: #c9b458;
+  border-color: #c9b458;
+  opacity: 0.14;
+}
+
+.game-error__ghost-tile--a {
+  background: #787c7e;
+  border-color: #787c7e;
+  opacity: 0.10;
+}
+
+/* ── Foreground card ── */
+.game-error__card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 82%;
+  max-width: 300px;
+  padding: 30px 24px 26px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  animation: game-error-fade-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.15s;
+}
+
+/* ── Emoji icon with pop animation ── */
+.game-error__icon-wrap {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f7f7fa, #eef0f4);
+  border-radius: 50%;
+  margin-bottom: 2px;
+  animation: game-error-icon-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 0.35s;
+}
+
+.game-error__emoji {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.game-error__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  letter-spacing: -0.02em;
+}
+
+.game-error__subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #888;
+  line-height: 1.55;
+  max-width: 240px;
+}
+
+.game-error__retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 11px 32px;
+  border: none;
+  border-radius: 12px;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.12s, box-shadow 0.2s;
+  min-width: 130px;
+  min-height: 42px;
+  box-shadow: 0 2px 10px rgba(26, 26, 46, 0.2);
+  letter-spacing: 0.01em;
+}
+
+.game-error__retry:hover {
+  background: #282845;
+  box-shadow: 0 4px 16px rgba(26, 26, 46, 0.28);
+}
+
+.game-error__retry:active {
+  transform: scale(0.96);
+}
+
+.game-error__retry:disabled {
+  opacity: 0.7;
+  cursor: default;
+  box-shadow: none;
+}
+
+.game-error__retry-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ── Game loading state (shown while puzzle/players fetch) ── */
 .game-loading {
   display: flex;
