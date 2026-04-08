@@ -1,7 +1,9 @@
 import type { GameStats } from "../components/games";
+import type { GameResultPayload } from "../services/auth-api";
 
 const LS_STATS_KEY = "stumpdpuzzle_stats";
 const LS_STATS_RECORDED_KEY = "stumpdpuzzle_statsRecordedGameId";
+const LS_GAME_HISTORY_KEY = "stumpdpuzzle_gameHistory";
 
 export const DEFAULT_STUMPD_STATS: GameStats = {
   gamesPlayed: 0,
@@ -25,6 +27,31 @@ export function persistStats(stats: GameStats): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(LS_STATS_KEY, JSON.stringify(stats));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/** Read per-game result history from localStorage. */
+export function readGameHistory(): GameResultPayload[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LS_GAME_HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as GameResultPayload[];
+  } catch {
+    return [];
+  }
+}
+
+/** Append a game result to localStorage history (de-duped by puzzle_day). */
+export function saveGameToHistory(result: GameResultPayload): void {
+  if (typeof window === "undefined") return;
+  try {
+    const history = readGameHistory();
+    if (history.some((r) => r.puzzle_day === result.puzzle_day)) return;
+    history.push(result);
+    localStorage.setItem(LS_GAME_HISTORY_KEY, JSON.stringify(history));
   } catch {
     /* quota / private mode */
   }

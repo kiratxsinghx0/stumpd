@@ -78,6 +78,7 @@ export async function register(
   if (!res.ok || !json.success) throw new Error((json.message as string) || "Registration failed");
   const data = json.data as { token: string; user: AuthUser };
   storeAuth(data.token, data.user);
+  syncGameHistory().catch(() => {});
   return data;
 }
 
@@ -105,7 +106,26 @@ export async function login(
   if (!res.ok || !json.success) throw new Error((json.message as string) || "Login failed");
   const data = json.data as { token: string; user: AuthUser };
   storeAuth(data.token, data.user);
+  syncGameHistory().catch(() => {});
   return data;
+}
+
+/** Bulk-sync all localStorage game results to the backend. */
+export async function syncGameHistory(): Promise<void> {
+  const token = getStoredToken();
+  if (!token) return;
+  try {
+    const { readGameHistory } = await import("../stumpd/stats-storage");
+    const results = readGameHistory();
+    if (results.length === 0) return;
+    await fetch("/api/user/sync-results", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ results }),
+    });
+  } catch {
+    /* non-critical */
+  }
 }
 
 export async function postGameResult(payload: GameResultPayload): Promise<UserStats | null> {

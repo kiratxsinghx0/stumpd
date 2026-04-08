@@ -12,7 +12,7 @@ import type { IplPlayerRow } from "./ipl-players";
 import { fetchPuzzleToday } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
 import type { GameStats, LiveStats } from "../components/games";
-import { DEFAULT_STUMPD_STATS, readStats, recordGameResult } from "./stats-storage";
+import { DEFAULT_STUMPD_STATS, readStats, recordGameResult, saveGameToHistory } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
 import { fetchLiveStats, incrementLiveStats } from "../services/live-stats-api";
 import { postGameResult, isLoggedIn, fetchMyStats } from "../services/auth-api";
@@ -824,6 +824,7 @@ export default function Game() {
             hints_used: allUnlockedHints.length,
           };
           setLastGameResult(payload);
+          saveGameToHistory(payload);
 
           incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses).catch(() => {});
           if (isLoggedIn()) {
