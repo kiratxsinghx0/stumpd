@@ -59,30 +59,53 @@ export async function register(
   gameResult?: GameResultPayload,
   baselineStats?: { gamesPlayed: number; gamesWon: number; currentStreak: number; maxStreak: number },
 ): Promise<{ user: AuthUser; token: string }> {
-  const res = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, gameResult, baselineStats }),
-  });
-  const json = await res.json();
-  if (!res.ok || !json.success) throw new Error(json.message || "Registration failed");
-  storeAuth(json.data.token, json.data.user);
-  return json.data;
+  let res: Response;
+  try {
+    res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, gameResult, baselineStats }),
+    });
+  } catch {
+    throw new Error("Network error — please check your connection");
+  }
+  let json: Record<string, unknown>;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("Server returned an unexpected response");
+  }
+  if (!res.ok || !json.success) throw new Error((json.message as string) || "Registration failed");
+  const data = json.data as { token: string; user: AuthUser };
+  storeAuth(data.token, data.user);
+  return data;
 }
 
 export async function login(
   email: string,
   password: string,
+  baselineStats?: { gamesPlayed: number; gamesWon: number; currentStreak: number; maxStreak: number },
 ): Promise<{ user: AuthUser; token: string }> {
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  const json = await res.json();
-  if (!res.ok || !json.success) throw new Error(json.message || "Login failed");
-  storeAuth(json.data.token, json.data.user);
-  return json.data;
+  let res: Response;
+  try {
+    res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, baselineStats }),
+    });
+  } catch {
+    throw new Error("Network error — please check your connection");
+  }
+  let json: Record<string, unknown>;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("Server returned an unexpected response");
+  }
+  if (!res.ok || !json.success) throw new Error((json.message as string) || "Login failed");
+  const data = json.data as { token: string; user: AuthUser };
+  storeAuth(data.token, data.user);
+  return data;
 }
 
 export async function postGameResult(payload: GameResultPayload): Promise<UserStats | null> {

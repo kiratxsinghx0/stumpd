@@ -1524,6 +1524,48 @@ a.page-header-icon-btn {
   margin-inline: auto;
 }
 
+/* ── Accuracy badge overlay ── */
+.game-badge-overlay {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.92), rgba(232, 245, 233, 0.92));
+  border: 1px solid rgba(106, 170, 100, 0.3);
+  box-shadow: 0 4px 20px rgba(106, 170, 100, 0.15);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  animation: badgeFadeIn 0.6s ease-out, badgeFadeOut 0.5s ease-in 2.5s forwards;
+}
+.game-badge-overlay__emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.game-badge-overlay__label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2d6a30;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+@keyframes badgeFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.9); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes badgeFadeOut {
+  from { opacity: 1; transform: translateX(-50%); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+}
+
 @keyframes gameWinToastIn {
   from {
     opacity: 0;
@@ -2105,6 +2147,20 @@ a.page-header-icon-btn {
   font-weight: 700;
   color: #333;
 }
+.share-hero__accuracy {
+  font-weight: 700;
+  color: #2d6a30;
+  background: linear-gradient(135deg, #f0fdf4, #e8f5e9);
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(106, 170, 100, 0.3);
+  white-space: nowrap;
+}
+.share-hero__accuracy--loss {
+  color: #92690a;
+  background: linear-gradient(135deg, #fef9f0, #fdf0e0);
+  border-color: rgba(201, 180, 88, 0.35);
+}
 
 .share-hero__time {
   font-size: 0.9rem;
@@ -2424,6 +2480,32 @@ a.page-header-icon-btn {
 
 .share-signup__input::placeholder {
   color: #aaa;
+}
+
+.share-signup__input--invalid {
+  border-color: #e57373;
+  background: #fff5f5;
+}
+
+.share-signup__input--invalid:focus {
+  border-color: #d32f2f;
+}
+
+.share-signup__field {
+  position: relative;
+}
+
+.share-signup__hint {
+  font-size: 0.7rem;
+  color: #e57373;
+  margin: 3px 0 0 2px;
+  line-height: 1.2;
+  animation: hintFadeIn 0.2s ease;
+}
+
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .share-signup__error {

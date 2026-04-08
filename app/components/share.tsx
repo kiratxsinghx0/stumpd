@@ -7,6 +7,8 @@ import ReminderPrompt from "./reminder-prompt";
 import { register, login, isLoggedIn, postGameResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { readStats } from "../stumpd/stats-storage";
+import { getAccuracyBadge } from "../utils/accuracy-badge";
+import { SITE_URL } from "../../lib/site";
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -61,6 +63,7 @@ function bestCorrectCount(statuses: string[][]): number {
 /* ── Win sub-components ── */
 
 function HeroBlock({ guessCount, topPercent, elapsedSeconds }: { guessCount: number; topPercent: number; elapsedSeconds: number }) {
+  const badge = getAccuracyBadge(true, guessCount);
   return (
     <div className="share-hero">
       <div className="share-hero__badge">
@@ -68,7 +71,7 @@ function HeroBlock({ guessCount, topPercent, elapsedSeconds }: { guessCount: num
         <span className="share-hero__today">today</span>
       </div>
       <p className="share-hero__score">
-        You got it in <strong>{guessCount}/6</strong>
+        You got it in <strong>{guessCount}/6</strong> — <span className="share-hero__accuracy">{badge.label} {badge.emoji}</span>
       </p>
       <p className="share-hero__time">
         <span className="share-hero__time-icon">⏱</span> {formatElapsed(elapsedSeconds)}
@@ -172,7 +175,7 @@ function ShareCommunityPulse({
 }
 
 function DistributionChart({ userGuess, won, distribution }: { userGuess: number; won: boolean; distribution: number[] }) {
-  const maxVal = Math.max(...distribution);
+  const maxVal = Math.max(...distribution) || 1;
   return (
     <div className="share-dist share-dist--compact">
       <h3 className="share-dist__title">Guess Distribution</h3>
@@ -210,7 +213,7 @@ function LossHero({ correctLetters, elapsedSeconds }: { correctLetters: number; 
         <span className="share-loss-hero__count">{correctLetters}/{WORD_LENGTH}</span>
         <span className="share-loss-hero__label">letters right</span>
       </div>
-      <p className="share-loss-hero__msg">You were so close!</p>
+      <p className="share-loss-hero__msg"><span className="share-hero__accuracy share-hero__accuracy--loss">Golden Duck 🦆</span></p>
       <p className="share-loss-hero__time">
         <span className="share-loss-hero__time-icon">⏱</span> {formatElapsed(elapsedSeconds)}
       </p>
@@ -288,9 +291,12 @@ function SignupPrompt({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [mode, setMode] = useState<"register" | "login">("register");
+
+  const passwordTooShort = passwordTouched && password.length > 0 && password.length < 6;
 
   if (isLoggedIn() || done) {
     return done ? (
@@ -302,6 +308,10 @@ function SignupPrompt({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 6) {
+      setPasswordTouched(true);
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -309,7 +319,7 @@ function SignupPrompt({
       if (mode === "register") {
         await register(email, password, gameResultPayload ?? undefined, localStats);
       } else {
-        await login(email, password);
+        await login(email, password, localStats);
         if (gameResultPayload) {
           await postGameResult(gameResultPayload).catch(() => {});
         }
@@ -344,16 +354,23 @@ function SignupPrompt({
           required
           autoComplete="email"
         />
-        <input
-          className="share-signup__input"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-          autoComplete={mode === "register" ? "new-password" : "current-password"}
-        />
+        <div className="share-signup__field">
+          <input
+            className={`share-signup__input${passwordTooShort ? " share-signup__input--invalid" : ""}`}
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setPasswordTouched(true)}
+            required
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
+          />
+          {passwordTooShort && (
+            <p className="share-signup__hint">
+              {6 - password.length} more character{6 - password.length !== 1 ? "s" : ""} needed
+            </p>
+          )}
+        </div>
         {error && <p className="share-signup__error">{error}</p>}
         <button
           type="submit"
@@ -366,7 +383,7 @@ function SignupPrompt({
       <button
         type="button"
         className="share-signup__toggle"
-        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); }}
+        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setPasswordTouched(false); }}
       >
         {mode === "register" ? "Already have an account? Log in" : "New here? Create account"}
       </button>
@@ -384,6 +401,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
   void answer;
   const [copied, setCopied] = useState(false);
   const isStumpd = !!gameTitle;
+  const badge = getAccuracyBadge(won, guessCount);
 
   const dist = liveStats?.distribution ?? FALLBACK_DISTRIBUTION;
   const playedToday = liveStats?.totalPlayed ?? FALLBACK_PLAYED_TODAY;
@@ -410,18 +428,47 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
       : `X/6 | ${correctLetters}/${WORD_LENGTH} letters | ⏱ ${timeStr}`);
 
   const handleCopy = () => {
+    const header = `🏏 Stumpd #${puzzleDay ?? "?"}`;
+    const badgeLine = `${badge.emoji} ${badge.label}`;
+    const streakLine = stats.currentStreak > 1 ? `\n🔥 ${stats.currentStreak}-day streak` : "";
+    const strikeRate = Math.round((WORD_LENGTH * 100) / (guessCount + elapsedSeconds / 60));
+
     let full: string;
-    if (isStumpd) {
-      const header = `🏏 ${gameTitle} #${puzzleDay ?? "?"}`;
-      const hintsLine = hintsUsed != null && maxHints != null ? `\nHints used: ${hintsUsed}/${maxHints}` : "";
-      const scoreLine = won
-        ? `${guessCount}/6 | ⏱ ${timeStr}`
-        : `X/6 | ${correctLetters}/${WORD_LENGTH} letters | ⏱ ${timeStr}`;
-      full = `${header}${hintsLine}\n${scoreLine}\n\n${emojiGrid}\n\nCan you beat me?\n${window.location.href}`;
+    if (won) {
+      const ballsWord = guessCount === 1 ? "ball" : "balls";
+      const chaseLine = guessCount === 6
+        ? "Last-ball finish!"
+        : `Chased it in ${guessCount} ${ballsWord}`;
+      const hintsFlex = hintsUsed === 0 ? " · No hints" : "";
+      const lines = [
+        header,
+        "",
+        badgeLine,
+        `${chaseLine}${hintsFlex}`,
+        `⚡ SR: ${strikeRate}`,
+        `⏱ ${timeStr}`,
+        streakLine,
+        "",
+        emojiGrid,
+        "",
+        "Can you beat me?",
+        SITE_URL,
+      ];
+      full = lines.filter(l => l !== undefined).join("\n");
     } else {
-      full = won
-        ? ["🏏 Stumpd", `${guessCount}/6 | Top ${topPercent}% | ⏱ ${timeStr}`, "", "", emojiGrid, "", "", "🏆 Can you beat me?", window.location.href].join("\n")
-        : ["🏏 Stumpd", `X/6 — Almost had it! | ⏱ ${timeStr}`, "", "", emojiGrid, "", "", "🏆 Can you beat me?", window.location.href].join("\n");
+      const lines = [
+        header,
+        "",
+        "🦆 Golden Duck",
+        `Bowled out · ${correctLetters}/${WORD_LENGTH} letters`,
+        `⏱ ${timeStr}`,
+        "",
+        emojiGrid,
+        "",
+        "Tomorrow's a new innings",
+        SITE_URL,
+      ];
+      full = lines.join("\n");
     }
 
     navigator.clipboard.writeText(full).then(() => {
@@ -466,16 +513,6 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
           <h2 className="share-modal-title">
             {won ? "Congratulations!" : "Almost had it!"}
           </h2>
-          {won && (
-            <p className="share-modal-subtitle">
-              You cracked it — <span className="share-modal-subtitle--accent">worth flexing.</span>
-            </p>
-          )}
-          {!won && (
-            <p className="share-modal-subtitle">
-              Tough puzzle — <span className="share-modal-subtitle--accent">still worth the challenge.</span>
-            </p>
-          )}
         </div>
 
         <div className="share-modal-scroll">

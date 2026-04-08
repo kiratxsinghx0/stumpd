@@ -15,8 +15,9 @@ import type { GameStats, LiveStats } from "../components/games";
 import { DEFAULT_STUMPD_STATS, readStats, recordGameResult } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
 import { fetchLiveStats, incrementLiveStats } from "../services/live-stats-api";
-import { postGameResult, isLoggedIn } from "../services/auth-api";
+import { postGameResult, isLoggedIn, fetchMyStats } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
+import { getAccuracyBadge } from "../utils/accuracy-badge";
 
 function findHint<T = string>(hints: PuzzleHintEntry[], key: string): T | undefined {
   const entry = hints.find((h) => h[key] !== undefined);
@@ -569,6 +570,7 @@ export default function Game() {
   const [doneFlipCols,     setDoneFlipCols]     = useState<Set<number>>(new Set());
   /** Row index (0-based) whose committed tiles play the win bounce; cleared after toast exits */
   const [winBounceRow, setWinBounceRow] = useState<number | null>(null);
+  const [showBadge, setShowBadge] = useState(false);
 
   const isAnimating = flippingRow !== null;
   const won      = guesses.length > 0 && isSamePlayer(guesses[guesses.length - 1], answer, playerList, puzzleAnswerFullName);
@@ -856,6 +858,15 @@ export default function Game() {
     return () => clearTimeout(t);
   }, [winBounceRow]);
 
+  // Show accuracy badge overlay briefly after game ends
+  useEffect(() => {
+    if (gameOver && !isAnimating) {
+      setShowBadge(true);
+      const t = setTimeout(() => setShowBadge(false), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [gameOver, isAnimating]);
+
   // Show modal after game ends (slight delay so last flip finishes); not if share already dismissed (e.g. reload)
   useEffect(() => {
     if (gameOver && !shareDismissed) {
@@ -864,10 +875,22 @@ export default function Game() {
     }
   }, [gameOver, shareDismissed]);
 
-  // Share modal always reflects latest persisted stats (localStorage is source of truth after each game).
   useEffect(() => {
     if (!showModal) return;
-    setStats(readStats());
+    const local = readStats();
+    setStats(local);
+
+    if (isLoggedIn()) {
+      fetchMyStats().then((server) => {
+        if (!server) return;
+        setStats({
+          gamesPlayed: Math.max(local.gamesPlayed, server.gamesPlayed),
+          gamesWon: Math.max(local.gamesWon, server.gamesWon),
+          currentStreak: Math.max(local.currentStreak, server.currentStreak),
+          maxStreak: Math.max(local.maxStreak, server.maxStreak),
+        });
+      }).catch(() => {});
+    }
   }, [showModal]);
 
   const handleKey = useCallback((key: string) => {
@@ -1003,6 +1026,15 @@ export default function Game() {
         )}
 
         <div className="game-grid-wrap">
+          {showBadge && (() => {
+            const badge = getAccuracyBadge(won, guesses.length);
+            return (
+              <div className="game-badge-overlay" aria-live="polite">
+                <span className="game-badge-overlay__emoji">{badge.emoji}</span>
+                <span className="game-badge-overlay__label">{badge.label}</span>
+              </div>
+            );
+          })()}
           <div className="game-grid">
           {Array.from({ length: MAX_GUESSES }).map((_, rowIndex) => {
             const isCommitted    = rowIndex < guesses.length;
@@ -1283,6 +1315,16 @@ export default function Game() {
           gameResultPayload={lastGameResult}
           onAuthChange={() => {
             fetchLiveStats().then(setLiveStats).catch(() => {});
+            const local = readStats();
+            fetchMyStats().then((server) => {
+              if (!server) return;
+              setStats({
+                gamesPlayed: Math.max(local.gamesPlayed, server.gamesPlayed),
+                gamesWon: Math.max(local.gamesWon, server.gamesWon),
+                currentStreak: Math.max(local.currentStreak, server.currentStreak),
+                maxStreak: Math.max(local.maxStreak, server.maxStreak),
+              });
+            }).catch(() => {});
           }}
           onClose={() => {
             setShowModal(false);
