@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { SITE_URL } from "../lib/site";
 import { CookieBanner } from "./components/cookie-banner";
 import "./globals.css";
@@ -80,12 +79,6 @@ export default function RootLayout({
         {children}
 
         <CookieBanner />
-
-        <Script
-          strategy="afterInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5063452717128088"
-          crossOrigin="anonymous"
-        />
       </body>
     </html>
   );

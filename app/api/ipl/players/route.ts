@@ -1,14 +1,7 @@
-const BACKEND =
-  process.env.BACKEND_API_URL ||
-  "https://fifabackend-production-2dd4.up.railway.app";
+import { proxyGet } from "@/lib/backend-proxy";
 
 export async function GET() {
-  const res = await fetch(`${BACKEND}/api/ipl/players`, {
-    cache: "no-store",
-  });
-  const body = await res.text();
-  return new Response(body, {
-    status: res.status,
-    headers: { "Content-Type": "application/json" },
+  return proxyGet("/api/ipl/players", {
+    cacheControl: "public, s-maxage=300, stale-while-revalidate=600",
   });
 }

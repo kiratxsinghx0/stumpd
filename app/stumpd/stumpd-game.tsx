@@ -7,7 +7,7 @@ import StumpdHowToPlay from "./stumpd-how-to-play";
 import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT } from "../components/page-header";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
-import { getInitialPlayerList, fetchIplPlayersFromAPI } from "./ipl-players";
+import { getInitialPlayerList, fetchIplPlayersFromAPI, loadFallbackPlayers } from "./ipl-players";
 import type { IplPlayerRow } from "./ipl-players";
 import { fetchPuzzleToday } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
@@ -400,20 +400,30 @@ export default function Game() {
     const cached = readCachedPuzzle();
     if (cached?.setAt && !isPuzzleBeforeTodayCutoff(cached.setAt)) setPuzzleData(cached);
 
-    ensureFreshPuzzle()
-      .then((fresh) => {
+    Promise.all([
+      ensureFreshPuzzle().catch(() => null),
+      fetchLiveStats().catch(() => null),
+      fetchIplPlayersFromAPI().catch(() => null),
+    ]).then(async ([fresh, live, players]) => {
+      if (fresh) {
         cachePuzzle(fresh);
         setPuzzleError(false);
         setPuzzleData((prev) => {
           if (prev && prev.day === fresh.day) return prev;
           return fresh;
         });
-      })
-      .catch(() => {
+      } else {
         if (!readCachedPuzzle()) setPuzzleError(true);
-      });
-
-    fetchLiveStats().then(setLiveStats).catch(() => {});
+      }
+      if (live) setLiveStats(live);
+      if (players) {
+        setPlayerList(players);
+      } else if (getInitialPlayerList().length === 0) {
+        const fallback = await loadFallbackPlayers();
+        if (fallback.length > 0) setPlayerList(fallback);
+      }
+      setPlayersLoading(false);
+    });
   }, []);
 
   const playerToGuess = puzzleData
@@ -449,15 +459,6 @@ export default function Game() {
 
   const [playerList, setPlayerList] = useState<IplPlayerRow[]>(() => getInitialPlayerList());
   const [playersLoading, setPlayersLoading] = useState(true);
-
-  useEffect(() => {
-    fetchIplPlayersFromAPI()
-      .then((data) => {
-        if (data) setPlayerList(data);
-      })
-      .catch(() => {})
-      .finally(() => setPlayersLoading(false));
-  }, []);
 
   const validGuesses = useMemo(
     () => playerList.map((p) => p.name.toLowerCase()),
