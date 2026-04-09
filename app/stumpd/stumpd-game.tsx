@@ -4,7 +4,7 @@ import ShareModal from "../components/share";
 import HowToPlayModal from "../components/how-to-play-modal";
 import GuessHistoryModal from "../components/guess-history-modal";
 import StumpdHowToPlay from "./stumpd-how-to-play";
-import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT, OPEN_LEADERBOARD_EVENT } from "../components/page-header";
+import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT, OPEN_LEADERBOARD_EVENT, dispatchLeaderboardState } from "../components/page-header";
 import LeaderboardModal from "../components/leaderboard-modal";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
@@ -19,6 +19,8 @@ import { fetchLiveStats, incrementLiveStats } from "../services/live-stats-api";
 import { postGameResult, isLoggedIn, fetchMyStats } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { getAccuracyBadge } from "../utils/accuracy-badge";
+import { xorDecode, ENCODE_KEY } from "../utils/xor-codec";
+import NextPuzzleTimer from "../components/timers";
 
 function findHint<T = string>(hints: PuzzleHintEntry[], key: string): T | undefined {
   const entry = hints.find((h) => h[key] !== undefined);
@@ -94,16 +96,6 @@ function isSamePlayer(
 const MAX_GUESSES  = 6;
 const WORD_LENGTH  = 5;
 
-const ENCODE_KEY = "fw26k";
-
-function xorDecode(encoded: string, key: string): string {
-  const raw = atob(encoded);
-  let result = "";
-  for (let i = 0; i < raw.length; i++) {
-    result += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-  }
-  return result;
-}
 
 const LS_PUZZLE_CACHE_KEY = "stumpdpuzzle_cache";
 
@@ -356,7 +348,8 @@ function letterStatusFromRows(guessRows: string[], statusRows: string[][]): Reco
     if (!rowStats) continue;
     row.split("").forEach((letter, i) => {
       const s = rowStats[i];
-      if (!next[letter] || STATUS_PRIORITY[s] > STATUS_PRIORITY[next[letter]]) {
+      if (!s) return;
+      if (!next[letter] || (STATUS_PRIORITY[s] ?? 0) > (STATUS_PRIORITY[next[letter]] ?? 0)) {
         next[letter] = s;
       }
     });
@@ -398,6 +391,7 @@ export default function Game() {
   const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const cached = readCachedPuzzle();
     if (cached?.setAt && !isPuzzleBeforeTodayCutoff(cached.setAt)) setPuzzleData(cached);
 
@@ -406,11 +400,12 @@ export default function Game() {
       fetchLiveStats().catch(() => null),
       fetchIplPlayersFromAPI().catch(() => null),
     ]).then(async ([fresh, live, players]) => {
+      if (cancelled) return;
       if (fresh) {
         cachePuzzle(fresh);
         setPuzzleError(false);
         setPuzzleData((prev) => {
-          if (prev && prev.day === fresh.day) return prev;
+          if (prev && prev.day === fresh.day && prev.encoded === fresh.encoded) return prev;
           return fresh;
         });
       } else {
@@ -421,10 +416,12 @@ export default function Game() {
         setPlayerList(players);
       } else if (getInitialPlayerList().length === 0) {
         const fallback = await loadFallbackPlayers();
+        if (cancelled) return;
         if (fallback.length > 0) setPlayerList(fallback);
       }
       setPlayersLoading(false);
     });
+    return () => { cancelled = true; };
   }, []);
 
   const playerToGuess = puzzleData
@@ -443,21 +440,27 @@ export default function Game() {
   const [showHowToPlay, setShowHowToPlay]  = useState(false);
   const [showHintHistory, setShowHintHistory] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [shareDismissed, setShareDismissed] = useState(false);
   /** Cookie accepted + how to play seen — enables initial trivia before first guess (client-read). */
   const [returningUserHints, setReturningUserHints] = useState(false);
   const [usedTriviaIndices, setUsedTriviaIndices] = useState<number[]>([]);
+  const usedTriviaIndicesRef = useRef(usedTriviaIndices);
+  usedTriviaIndicesRef.current = usedTriviaIndices;
   const [stats, setStats] = useState<GameStats>(DEFAULT_STUMPD_STATS);
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [lastGameResult, setLastGameResult] = useState<GameResultPayload | null>(null);
+  const [todayRank, setTodayRank] = useState<number>(0);
   const [timerStarted, setTimerStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedSecondsRef = useRef(0);
   const [cookieConsentDone, setCookieConsentDone] = useState(false);
   const [howToPlayDone, setHowToPlayDone] = useState(false);
   const [aliasWin, setAliasWin] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nudgeShownRef = useRef(false);
+  const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [playerList, setPlayerList] = useState<IplPlayerRow[]>(() => getInitialPlayerList());
   const [playersLoading, setPlayersLoading] = useState(true);
@@ -475,7 +478,7 @@ export default function Game() {
     [playerList, playerToGuess, puzzleAnswerFullName]
   );
 
-  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone;
+  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showModal;
 
   const answer = targetPlayer?.name.toLowerCase() ?? "";
   const nameNotice =
@@ -524,6 +527,7 @@ export default function Game() {
   /** Mark how-to-play seen on cookie accept so returning-user trivia hint works. */
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let htpTimer: ReturnType<typeof setTimeout> | null = null;
     try {
       if (localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY) === "accepted") {
         localStorage.setItem(LS_HOW_TO_PLAY_SEEN, "true");
@@ -539,7 +543,7 @@ export default function Game() {
         } else {
           try {
             if (localStorage.getItem(LS_HOW_TO_PLAY_DISMISSED) !== "1") {
-              setTimeout(() => setShowHowToPlay(true), 450);
+              htpTimer = setTimeout(() => setShowHowToPlay(true), 450);
             }
           } catch { /* */ }
         }
@@ -549,7 +553,10 @@ export default function Game() {
       setReturningUserHints(readReturningUserHintEligible());
     };
     window.addEventListener("cookie-consent", onCookieConsent);
-    return () => window.removeEventListener("cookie-consent", onCookieConsent);
+    return () => {
+      window.removeEventListener("cookie-consent", onCookieConsent);
+      if (htpTimer) clearTimeout(htpTimer);
+    };
   }, []);
 
   /** Header help button opens How to play without waiting for first-visit flow. */
@@ -572,6 +579,10 @@ export default function Game() {
     window.addEventListener(OPEN_LEADERBOARD_EVENT, onOpenLb);
     return () => window.removeEventListener(OPEN_LEADERBOARD_EVENT, onOpenLb);
   }, []);
+
+  useEffect(() => {
+    dispatchLeaderboardState(showLeaderboard);
+  }, [showLeaderboard]);
 
   // Animation state
   const [flippingRow,      setFlippingRow]      = useState<number | null>(null);
@@ -649,8 +660,8 @@ export default function Game() {
     for (let t = 0; t < Math.min(wrongGuessCount, HINT_LADDER.length); t++) {
       if (HINT_LADDER[t].key === "trivia") needed++;
     }
-    if (needed <= usedTriviaIndices.length) return;
-    let current = [...usedTriviaIndices];
+    if (needed <= usedTriviaIndicesRef.current.length) return;
+    let current = [...usedTriviaIndicesRef.current];
     while (current.length < needed) {
       current = pickAndStoreTriviaIndex(current);
     }
@@ -663,6 +674,8 @@ export default function Game() {
   for (let i = 1; i <= wrongGuessCount; i++) {
     allUnlockedHints.push(resolveHintTier(i - 1, usedTriviaIndices));
   }
+  const allUnlockedHintsRef = useRef(allUnlockedHints);
+  allUnlockedHintsRef.current = allUnlockedHints;
 
   const [activeHintIdx, setActiveHintIdx] = useState(0);
   const [hintSlideDir, setHintSlideDir] = useState<"left" | "right" | "">("");
@@ -723,7 +736,11 @@ export default function Game() {
 
     try {
       const savedElapsed = localStorage.getItem(LS_TIMER_ELAPSED_KEY);
-      if (savedElapsed) setElapsedSeconds(parseInt(savedElapsed, 10) || 0);
+      if (savedElapsed) {
+        const val = parseInt(savedElapsed, 10) || 0;
+        setElapsedSeconds(val);
+        elapsedSecondsRef.current = val;
+      }
       if (localStorage.getItem(LS_TIMER_STARTED_KEY) === "1") setTimerStarted(true);
       const savedTrivia = localStorage.getItem(LS_USED_TRIVIA_KEY);
       if (savedTrivia) setUsedTriviaIndices(JSON.parse(savedTrivia));
@@ -747,6 +764,7 @@ export default function Game() {
     const id = setInterval(() => {
       setElapsedSeconds(prev => {
         const next = prev + 1;
+        elapsedSecondsRef.current = next;
         try { localStorage.setItem(LS_TIMER_ELAPSED_KEY, String(next)); } catch { /* */ }
         return next;
       });
@@ -827,19 +845,22 @@ export default function Game() {
         if (justWon || justLost) {
           setStats(recordGameResult(justWon, currentGameId));
 
-          const payload: GameResultPayload = {
-            puzzle_day: Number(currentGameId),
-            won: justWon,
-            num_guesses: completedRowIndex + 1,
-            time_seconds: elapsedSeconds,
-            hints_used: allUnlockedHints.length,
-          };
+            const payload: GameResultPayload = {
+              puzzle_day: Number(currentGameId),
+              won: justWon,
+              num_guesses: completedRowIndex + 1,
+              time_seconds: elapsedSecondsRef.current,
+              hints_used: allUnlockedHintsRef.current.length,
+            };
           setLastGameResult(payload);
           saveGameToHistory(payload);
 
           incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses).catch(() => {});
           if (isLoggedIn()) {
-            postGameResult(payload).catch(() => {});
+            postGameResult(payload).then((result) => {
+              if (result?.todayRank) setTodayRank(result.todayRank);
+              setLbInvalidateKey(k => k + 1);
+            }).catch(() => {});
           }
         }
 
@@ -889,20 +910,23 @@ export default function Game() {
 
   useEffect(() => {
     if (!showModal) return;
+    let cancelled = false;
     const local = readStats();
     setStats(local);
 
     if (isLoggedIn()) {
       fetchMyStats().then((server) => {
-        if (!server) return;
+        if (cancelled || !server) return;
         setStats({
           gamesPlayed: Math.max(local.gamesPlayed, server.gamesPlayed),
           gamesWon: Math.max(local.gamesWon, server.gamesWon),
           currentStreak: Math.max(local.currentStreak, server.currentStreak),
           maxStreak: Math.max(local.maxStreak, server.maxStreak),
         });
+        if (server.todayRank) setTodayRank(server.todayRank);
       }).catch(() => {});
     }
+    return () => { cancelled = true; };
   }, [showModal]);
 
   const handleKey = useCallback((key: string) => {
@@ -912,13 +936,15 @@ export default function Game() {
       if (currentInput.length !== WORD_LENGTH) {
         setMessage("Not enough letters");
         setShaking(true);
-        setTimeout(() => { setShaking(false); setMessage(""); }, 600);
+        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+        shakeTimerRef.current = setTimeout(() => { setShaking(false); setMessage(""); }, 600);
         return;
       }
       if (currentInput !== answer && !validGuesses.includes(currentInput)) {
         setMessage("Not a valid cricketer name");
         setShaking(true);
-        setTimeout(() => { setShaking(false); setMessage(""); }, 600);
+        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+        shakeTimerRef.current = setTimeout(() => { setShaking(false); setMessage(""); }, 600);
         return;
       }
 
@@ -1034,6 +1060,32 @@ export default function Game() {
     );
   }
 
+  if (!targetPlayer && !playersLoading) {
+    return (
+      <div className="game-page__content">
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
+        <div className="game-error">
+          <div className="game-error__card">
+            <div className="game-error__icon-wrap">
+              <span className="game-error__emoji">🏏</span>
+            </div>
+            <h2 className="game-error__title">Player data unavailable</h2>
+            <p className="game-error__subtitle">
+              We couldn&apos;t load the player list. Please try refreshing the page.
+            </p>
+            <button
+              type="button"
+              className="game-error__retry"
+              onClick={() => window.location.reload()}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="game-page__content">
@@ -1077,6 +1129,12 @@ export default function Game() {
                 Got it
               </button>
             </div>
+          </div>
+        )}
+
+        {gameOver && !isAnimating && (
+          <div className="game-next-timer-inline">
+            <NextPuzzleTimer />
           </div>
         )}
 
@@ -1357,6 +1415,7 @@ export default function Game() {
         open={showLeaderboard}
         onClose={() => setShowLeaderboard(false)}
         puzzleDay={puzzleData?.day}
+        invalidateKey={lbInvalidateKey}
       />
 
       {/* Share modal */}
@@ -1374,8 +1433,17 @@ export default function Game() {
           maxHints={HINT_LADDER.length + 1}
           liveStats={liveStats}
           gameResultPayload={lastGameResult}
+          todayRank={todayRank}
           onAuthChange={() => {
             fetchLiveStats().then(setLiveStats).catch(() => {});
+
+            if (lastGameResult) {
+              postGameResult(lastGameResult).then((result) => {
+                if (result?.todayRank) setTodayRank(result.todayRank);
+                setLbInvalidateKey(k => k + 1);
+              }).catch(() => {});
+            }
+
             const local = readStats();
             fetchMyStats().then((server) => {
               if (!server) return;
@@ -1385,6 +1453,7 @@ export default function Game() {
                 currentStreak: Math.max(local.currentStreak, server.currentStreak),
                 maxStreak: Math.max(local.maxStreak, server.maxStreak),
               });
+              if (server.todayRank) setTodayRank(server.todayRank);
             }).catch(() => {});
           }}
           onClose={() => {

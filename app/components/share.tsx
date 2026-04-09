@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { GameStats, LiveStats } from "./games";
 import NextPuzzleTimer from "./timers";
 import ReminderPrompt from "./reminder-prompt";
@@ -39,6 +39,7 @@ type Props = {
   liveStats?: LiveStats | null;
   gameResultPayload?: GameResultPayload | null;
   onAuthChange?: () => void;
+  todayRank?: number;
 };
 
 function formatCompactCount(n: number): string {
@@ -207,16 +208,20 @@ function DistributionChart({ userGuess, won, distribution }: { userGuess: number
   );
 }
 
-function MiniTodayLeaderboard({ puzzleDay }: { puzzleDay?: number }) {
+function MiniTodayLeaderboard({ puzzleDay, refreshKey }: { puzzleDay?: number; refreshKey?: number }) {
   const [rows, setRows] = useState<TodayEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!puzzleDay) return;
+    if (puzzleDay == null) return;
+    let cancelled = false;
+    setLoaded(false);
     fetchTodayLeaderboard(puzzleDay)
-      .then((d) => setRows(d.slice(0, 5)))
-      .finally(() => setLoaded(true));
-  }, [puzzleDay]);
+      .then((d) => { if (!cancelled) setRows(d.slice(0, 5)); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+  }, [puzzleDay, refreshKey]);
 
   if (!loaded || rows.length === 0) return null;
 
@@ -244,7 +249,7 @@ function MiniTodayLeaderboard({ puzzleDay }: { puzzleDay?: number }) {
                 <td className="share-mini-lb__td share-mini-lb__td--rank">
                   {r.rank <= 3 ? medals[r.rank - 1] : r.rank}
                 </td>
-                <td className="share-mini-lb__td share-mini-lb__td--email">{r.email}</td>
+                <td className="share-mini-lb__td share-mini-lb__td--email">{r.email.split("@")[0]}</td>
                 <td className="share-mini-lb__td share-mini-lb__td--num">{r.num_guesses}/6</td>
                 <td className="share-mini-lb__td share-mini-lb__td--num">{timeStr}</td>
               </tr>
@@ -340,6 +345,20 @@ function SharePreviewCard({
   );
 }
 
+function LeaderboardNudge({ won }: { won: boolean }) {
+  if (isLoggedIn()) return null;
+  return (
+    <div className="share-lb-nudge">
+      <span className="share-lb-nudge__icon" aria-hidden>&#127942;</span>
+      <p className="share-lb-nudge__text">
+        {won
+          ? "You're eligible for the leaderboard! Log in to claim your spot."
+          : "Log in to track your progress on the leaderboard."}
+      </p>
+    </div>
+  );
+}
+
 function SignupPrompt({
   gameResultPayload,
   onAuthChange,
@@ -379,9 +398,6 @@ function SignupPrompt({
         await register(email, password, gameResultPayload ?? undefined, localStats);
       } else {
         await login(email, password, localStats);
-        if (gameResultPayload) {
-          await postGameResult(gameResultPayload).catch(() => {});
-        }
       }
       setDone(true);
       onAuthChange?.();
@@ -456,9 +472,12 @@ function formatElapsed(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints, liveStats, gameResultPayload, onAuthChange }: Props) {
+export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints, liveStats, gameResultPayload, onAuthChange, todayRank }: Props) {
   void answer;
   const [copied, setCopied] = useState(false);
+  const [lbRefreshKey, setLbRefreshKey] = useState(0);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current); }, []);
   const isStumpd = !!gameTitle;
   const badge = getAccuracyBadge(won, guessCount);
 
@@ -488,7 +507,8 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
   const handleCopy = () => {
     const header = `🏏 Stumpd #${puzzleDay ?? "?"}`;
     const streakLine = stats.currentStreak > 1 ? `🔥 ${stats.currentStreak}-day streak` : "";
-    const strikeRate = Math.round((WORD_LENGTH * 100) / (guessCount + elapsedSeconds / 60));
+    const srDenom = guessCount + elapsedSeconds / 60;
+    const strikeRate = srDenom > 0 ? Math.round((WORD_LENGTH * 100) / srDenom) : 0;
 
     // Trailing double-space on each non-blank line produces a markdown <br>,
     // so line breaks survive Reddit / Discord / any markdown renderer.
@@ -505,6 +525,9 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
         ? "Last-ball finish!"
         : `Chased it in ${guessCount} ${ballsWord}`;
       const hintsFlex = hintsUsed === 0 ? " · No hints" : "";
+      const lbLine = todayRank && todayRank > 0 && todayRank <= 10
+        ? `📊 #${todayRank} on today's leaderboard`
+        : undefined;
       full = fmt([
         header,
         "",
@@ -512,6 +535,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
         `${chaseLine}${hintsFlex}`,
         `⚡ SR: ${strikeRate} | ⏱ ${timeStr}`,
         streakLine || undefined,
+        lbLine,
         "",
         ...gridRows,
         "",
@@ -534,8 +558,9 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
 
     navigator.clipboard.writeText(full).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2500);
+    }).catch(() => { /* clipboard permission denied or unavailable */ });
   };
 
   return (
@@ -580,6 +605,11 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
           {won ? (
             <>
               <HeroBlock guessCount={guessCount} topPercent={topPercent} elapsedSeconds={elapsedSeconds} />
+              <LeaderboardNudge won={won} />
+              <SignupPrompt
+                gameResultPayload={gameResultPayload}
+                onAuthChange={() => { onAuthChange?.(); setLbRefreshKey(k => k + 1); }}
+              />
               <SharePersonalStats stats={stats} />
               <ShareCommunityPulse
                 variant="win"
@@ -589,29 +619,29 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 playedToday={playedToday}
                 solvedPercent={solvedPercent}
               />
-              <MiniTodayLeaderboard puzzleDay={puzzleDay} />
+              <MiniTodayLeaderboard puzzleDay={puzzleDay} refreshKey={lbRefreshKey} />
               <DistributionChart userGuess={guessCount} won={won} distribution={dist} />
             </>
           ) : (
             <>
               <LossHero correctLetters={correctLetters} elapsedSeconds={elapsedSeconds} />
+              <LeaderboardNudge won={won} />
+              <SignupPrompt
+                gameResultPayload={gameResultPayload}
+                onAuthChange={() => { onAuthChange?.(); setLbRefreshKey(k => k + 1); }}
+              />
               <SharePersonalStats stats={stats} />
               <ShareCommunityPulse
                 variant="loss"
                 playedToday={playedToday}
                 solvedPercent={solvedPercent}
               />
-              <MiniTodayLeaderboard puzzleDay={puzzleDay} />
+              <MiniTodayLeaderboard puzzleDay={puzzleDay} refreshKey={lbRefreshKey} />
               <div className="share-loss-timer">
                 <NextPuzzleTimer />
               </div>
             </>
           )}
-
-          <SignupPrompt
-            gameResultPayload={gameResultPayload}
-            onAuthChange={onAuthChange}
-          />
 
           <SharePreviewCard
             statuses={statuses}

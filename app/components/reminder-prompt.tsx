@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   registerAndSubscribe,
   canRequestNotifications,
@@ -70,13 +70,16 @@ export default function ReminderPrompt({ variant = "default" }: Props) {
     }
   }, []);
 
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (successTimerRef.current) clearTimeout(successTimerRef.current); }, []);
+
   const handleAccept = useCallback(async () => {
     setStatus("loading");
     try {
       const ok = await registerAndSubscribe();
       if (ok) {
         setStatus("success");
-        setTimeout(() => setShowMode("none"), 2200);
+        successTimerRef.current = setTimeout(() => setShowMode("none"), 2200);
       } else {
         setDismissed(true);
       }

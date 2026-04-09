@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 import LeftSidebar from "./left-sidebar";
 import { dispatchOpenHowToPlay } from "./how-to-play-open";
 import { dispatchOpenHintHistory, HINT_COUNT_UPDATE_EVENT } from "./hint-history-open";
-import { dispatchOpenLeaderboard } from "./leaderboard-open";
+import { dispatchOpenLeaderboard, LEADERBOARD_STATE_EVENT } from "./leaderboard-open";
 
 export { OPEN_HOW_TO_PLAY_EVENT, dispatchOpenHowToPlay } from "./how-to-play-open";
 export { OPEN_HINT_HISTORY_EVENT } from "./hint-history-open";
-export { OPEN_LEADERBOARD_EVENT } from "./leaderboard-open";
+export { OPEN_LEADERBOARD_EVENT, dispatchLeaderboardState } from "./leaderboard-open";
 
 type PageHeaderProps = {
   /** When false, only the logo and accent bar (matches legal/static pages). */
@@ -30,11 +30,24 @@ export default function PageHeader({
 }: PageHeaderProps) {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [hintCount, setHintCount] = useState(0);
+  const [lbOpen, setLbOpen] = useState(false);
 
   useEffect(() => {
-    const onCount = (e: Event) => setHintCount((e as CustomEvent<number>).detail);
+    const onCount = (e: Event) => {
+      const val = (e as CustomEvent<number>).detail;
+      if (typeof val === "number" && !Number.isNaN(val)) setHintCount(val);
+    };
     window.addEventListener(HINT_COUNT_UPDATE_EVENT, onCount);
     return () => window.removeEventListener(HINT_COUNT_UPDATE_EVENT, onCount);
+  }, []);
+
+  useEffect(() => {
+    const onLbState = (e: Event) => {
+      const val = (e as CustomEvent<boolean>).detail;
+      if (typeof val === "boolean") setLbOpen(val);
+    };
+    window.addEventListener(LEADERBOARD_STATE_EVENT, onLbState);
+    return () => window.removeEventListener(LEADERBOARD_STATE_EVENT, onLbState);
   }, []);
 
   const logo = (
@@ -140,7 +153,7 @@ export default function PageHeader({
             {showHowToPlay ? (
               <button
                 type="button"
-                className="page-header-icon-btn page-header-leaderboard-btn"
+                className={`page-header-icon-btn page-header-leaderboard-btn${lbOpen ? " page-header-leaderboard-btn--active" : ""}`}
                 aria-label="Leaderboard"
                 onClick={() => dispatchOpenLeaderboard()}
               >
@@ -153,10 +166,9 @@ export default function PageHeader({
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden
                 >
-                  <path
-                    d="M6 9H2v12h4V9zm6-6h-4v18h4V3zm6 10h-4v8h4v-8z"
-                    fill="currentColor"
-                  />
+                  <rect x="3" y="13" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                  <rect x="9.5" y="5" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                  <rect x="16" y="9" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
                 </svg>
               </button>
             ) : null}

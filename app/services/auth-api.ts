@@ -17,6 +17,7 @@ export type UserStats = {
   currentStreak: number;
   maxStreak: number;
   distribution: number[];
+  todayRank?: number;
 };
 
 export function getStoredToken(): string | null {
@@ -39,13 +40,17 @@ export function isLoggedIn(): boolean {
 }
 
 function storeAuth(token: string, user: AuthUser) {
-  localStorage.setItem(LS_TOKEN_KEY, token);
-  localStorage.setItem(LS_USER_KEY, JSON.stringify(user));
+  try {
+    localStorage.setItem(LS_TOKEN_KEY, token);
+    localStorage.setItem(LS_USER_KEY, JSON.stringify(user));
+  } catch { /* quota / private mode */ }
 }
 
 export function clearAuth() {
-  localStorage.removeItem(LS_TOKEN_KEY);
-  localStorage.removeItem(LS_USER_KEY);
+  try {
+    localStorage.removeItem(LS_TOKEN_KEY);
+    localStorage.removeItem(LS_USER_KEY);
+  } catch { /* private mode / quota */ }
 }
 
 function authHeaders(): Record<string, string> {

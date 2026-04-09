@@ -65,7 +65,10 @@ export async function fetchIplPlayersFromAPI(): Promise<IplPlayerRow[] | null> {
   let storedCount: number | null = null;
   try {
     const raw = localStorage.getItem(LS_PLAYER_COUNT_KEY);
-    if (raw != null) storedCount = parseInt(raw, 10);
+    if (raw != null) {
+      const parsed = parseInt(raw, 10);
+      if (!isNaN(parsed)) storedCount = parsed;
+    }
   } catch { /* SSR / private mode */ }
 
   if (storedCount === apiCount && cached) return cached;

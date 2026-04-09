@@ -1,9 +1,6 @@
-export type LiveStats = {
-  puzzleDay: number | null;
-  totalPlayed: number;
-  totalWon: number;
-  distribution: number[];
-};
+import type { LiveStats } from "../components/games";
+
+export type { LiveStats };
 
 const FALLBACK: LiveStats = {
   puzzleDay: null,
@@ -19,7 +16,7 @@ export async function fetchLiveStats(): Promise<LiveStats> {
     const json = await res.json();
     if (!json.success || !json.data) return FALLBACK;
     const d = json.data as LiveStats;
-    if (d.totalPlayed === 0) return FALLBACK;
+    if (d.totalPlayed === 0 && d.puzzleDay == null) return FALLBACK;
     return d;
   } catch {
     return FALLBACK;

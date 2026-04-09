@@ -42,7 +42,7 @@ export default function GuessHistoryModal({
 
   if (!open || !mounted) return null;
 
-  const lockedCount = totalHints - hints.length;
+  const lockedCount = Math.max(0, totalHints - hints.length);
 
   return createPortal(
     <div className="hint-history-modal-root">
@@ -78,7 +78,7 @@ export default function GuessHistoryModal({
         <div className="hint-history-modal-progress">
           <div
             className="hint-history-modal-progress__bar"
-            style={{ width: `${(hints.length / totalHints) * 100}%` }}
+            style={{ width: `${totalHints > 0 ? (hints.length / totalHints) * 100 : 0}%` }}
           />
         </div>
 

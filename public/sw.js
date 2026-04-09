@@ -1,5 +1,6 @@
 const STATIC_CACHE = "stumpd-static-v1";
-const API_CACHE = "stumpd-api-v1";
+const API_CACHE = "stumpd-api-v2";
+const API_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 const STATIC_ASSETS = [
   "/stumpd-logo.png",
   "/og-image.png",
@@ -33,18 +34,35 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.method !== "GET") return;
 
-  // API calls: network-first, fall back to cache
+  // API calls: network-first, fall back to cache (with max-age check)
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(event.request)
         .then((res) => {
           if (res.ok) {
             const clone = res.clone();
-            caches.open(API_CACHE).then((c) => c.put(event.request, clone));
+            caches.open(API_CACHE).then((c) => {
+              const headers = new Headers(clone.headers);
+              headers.set("sw-cached-at", String(Date.now()));
+              c.put(event.request, new Response(clone.body, {
+                status: clone.status,
+                statusText: clone.statusText,
+                headers,
+              }));
+            });
           }
           return res;
         })
-        .catch(() => caches.match(event.request).then((r) => r || fetch(event.request))),
+        .catch(() =>
+          caches.match(event.request).then((cached) => {
+            if (!cached) return fetch(event.request);
+            const cachedAt = Number(cached.headers.get("sw-cached-at") || 0);
+            if (Date.now() - cachedAt > API_CACHE_MAX_AGE_MS) {
+              return fetch(event.request).catch(() => cached);
+            }
+            return cached;
+          }),
+        ),
     );
     return;
   }

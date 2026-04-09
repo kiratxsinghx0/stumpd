@@ -59,13 +59,13 @@ export default function LeftSidebar({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || exiting) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [mounted]);
+  }, [mounted, exiting]);
 
   useEffect(() => {
     if (!mounted || exiting) return;

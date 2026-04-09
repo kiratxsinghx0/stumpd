@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 function getNextPuzzleTime(): Date {
   const now = new Date();
@@ -26,12 +26,20 @@ export default function NextPuzzleTimer() {
   const [timeLeft, setTimeLeft] = useState(() =>
     getNextPuzzleTime().getTime() - Date.now()
   );
+  const reloadedRef = useRef(false);
 
   useEffect(() => {
+    if (getNextPuzzleTime().getTime() - Date.now() <= 0 && !reloadedRef.current) {
+      reloadedRef.current = true;
+      window.location.reload();
+      return;
+    }
     const interval = setInterval(() => {
       const remaining = getNextPuzzleTime().getTime() - Date.now();
       setTimeLeft(remaining);
-      if (remaining <= 0) {
+      if (remaining <= 0 && !reloadedRef.current) {
+        reloadedRef.current = true;
+        clearInterval(interval);
         window.location.reload();
       }
     }, 1000);

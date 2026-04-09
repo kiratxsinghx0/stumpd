@@ -1,3 +1,5 @@
+import { xorDecode, ENCODE_KEY } from "../utils/xor-codec";
+
 export type PuzzleHintEntry = Record<string, unknown>;
 
 export type PuzzleData = {
@@ -10,17 +12,6 @@ export type PuzzleData = {
   hints: PuzzleHintEntry[] | null;
   setAt: string;
 };
-
-const ENCODE_KEY = "fw26k";
-
-function xorDecode(encoded: string, key: string): string {
-  const raw = atob(encoded);
-  let result = "";
-  for (let i = 0; i < raw.length; i++) {
-    result += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-  }
-  return result;
-}
 
 function decodePuzzle(data: PuzzleData): PuzzleData {
   if (typeof data.fullName === "string") {
