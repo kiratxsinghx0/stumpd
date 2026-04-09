@@ -4,7 +4,8 @@ import ShareModal from "../components/share";
 import HowToPlayModal from "../components/how-to-play-modal";
 import GuessHistoryModal from "../components/guess-history-modal";
 import StumpdHowToPlay from "./stumpd-how-to-play";
-import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT } from "../components/page-header";
+import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT, OPEN_LEADERBOARD_EVENT } from "../components/page-header";
+import LeaderboardModal from "../components/leaderboard-modal";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
 import { getInitialPlayerList, fetchIplPlayersFromAPI, loadFallbackPlayers } from "./ipl-players";
@@ -441,6 +442,7 @@ export default function Game() {
   const [showModal,     setShowModal]     = useState(false);
   const [showHowToPlay, setShowHowToPlay]  = useState(false);
   const [showHintHistory, setShowHintHistory] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [shareDismissed, setShareDismissed] = useState(false);
   /** Cookie accepted + how to play seen — enables initial trivia before first guess (client-read). */
   const [returningUserHints, setReturningUserHints] = useState(false);
@@ -562,6 +564,13 @@ export default function Game() {
     const onOpenHints = () => setShowHintHistory(true);
     window.addEventListener(OPEN_HINT_HISTORY_EVENT, onOpenHints);
     return () => window.removeEventListener(OPEN_HINT_HISTORY_EVENT, onOpenHints);
+  }, []);
+
+  /** Header leaderboard button opens leaderboard modal. */
+  useEffect(() => {
+    const onOpenLb = () => setShowLeaderboard(true);
+    window.addEventListener(OPEN_LEADERBOARD_EVENT, onOpenLb);
+    return () => window.removeEventListener(OPEN_LEADERBOARD_EVENT, onOpenLb);
   }, []);
 
   // Animation state
@@ -1343,6 +1352,12 @@ export default function Game() {
       <HowToPlayModal open={showHowToPlay} onClose={dismissHowToPlay}>
         <StumpdHowToPlay />
       </HowToPlayModal>
+
+      <LeaderboardModal
+        open={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+        puzzleDay={puzzleData?.day}
+      />
 
       {/* Share modal */}
       {showModal && (

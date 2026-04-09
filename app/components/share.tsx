@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { GameStats, LiveStats } from "./games";
 import NextPuzzleTimer from "./timers";
 import ReminderPrompt from "./reminder-prompt";
@@ -9,6 +9,9 @@ import type { GameResultPayload } from "../services/auth-api";
 import { readStats } from "../stumpd/stats-storage";
 import { getAccuracyBadge } from "../utils/accuracy-badge";
 import { SITE_URL } from "../../lib/site";
+import { fetchTodayLeaderboard } from "../services/leaderboard-api";
+import type { TodayEntry } from "../services/leaderboard-api";
+import { dispatchOpenLeaderboard } from "./leaderboard-open";
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -200,6 +203,62 @@ function DistributionChart({ userGuess, won, distribution }: { userGuess: number
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function MiniTodayLeaderboard({ puzzleDay }: { puzzleDay?: number }) {
+  const [rows, setRows] = useState<TodayEntry[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!puzzleDay) return;
+    fetchTodayLeaderboard(puzzleDay)
+      .then((d) => setRows(d.slice(0, 5)))
+      .finally(() => setLoaded(true));
+  }, [puzzleDay]);
+
+  if (!loaded || rows.length === 0) return null;
+
+  const medals = ["🥇", "🥈", "🥉"];
+
+  return (
+    <div className="share-mini-lb">
+      <p className="share-mini-lb__eyebrow">Today&apos;s Top Players</p>
+      <table className="share-mini-lb__table">
+        <thead>
+          <tr>
+            <th className="share-mini-lb__th share-mini-lb__th--rank">#</th>
+            <th className="share-mini-lb__th share-mini-lb__th--email">Player</th>
+            <th className="share-mini-lb__th share-mini-lb__th--num">Guesses</th>
+            <th className="share-mini-lb__th share-mini-lb__th--num">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const m = r.time_seconds != null ? Math.floor(r.time_seconds / 60) : 0;
+            const s = r.time_seconds != null ? r.time_seconds % 60 : 0;
+            const timeStr = r.time_seconds != null ? `${m}:${String(s).padStart(2, "0")}` : "—";
+            return (
+              <tr key={r.rank} className={r.rank <= 3 ? "share-mini-lb__row share-mini-lb__row--top" : "share-mini-lb__row"}>
+                <td className="share-mini-lb__td share-mini-lb__td--rank">
+                  {r.rank <= 3 ? medals[r.rank - 1] : r.rank}
+                </td>
+                <td className="share-mini-lb__td share-mini-lb__td--email">{r.email}</td>
+                <td className="share-mini-lb__td share-mini-lb__td--num">{r.num_guesses}/6</td>
+                <td className="share-mini-lb__td share-mini-lb__td--num">{timeStr}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <button
+        type="button"
+        className="share-mini-lb__more"
+        onClick={() => dispatchOpenLeaderboard()}
+      >
+        View full leaderboard
+      </button>
     </div>
   );
 }
@@ -530,6 +589,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 playedToday={playedToday}
                 solvedPercent={solvedPercent}
               />
+              <MiniTodayLeaderboard puzzleDay={puzzleDay} />
               <DistributionChart userGuess={guessCount} won={won} distribution={dist} />
             </>
           ) : (
@@ -541,6 +601,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 playedToday={playedToday}
                 solvedPercent={solvedPercent}
               />
+              <MiniTodayLeaderboard puzzleDay={puzzleDay} />
               <div className="share-loss-timer">
                 <NextPuzzleTimer />
               </div>

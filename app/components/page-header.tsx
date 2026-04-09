@@ -6,9 +6,11 @@ import { useEffect, useState } from "react";
 import LeftSidebar from "./left-sidebar";
 import { dispatchOpenHowToPlay } from "./how-to-play-open";
 import { dispatchOpenHintHistory, HINT_COUNT_UPDATE_EVENT } from "./hint-history-open";
+import { dispatchOpenLeaderboard } from "./leaderboard-open";
 
 export { OPEN_HOW_TO_PLAY_EVENT, dispatchOpenHowToPlay } from "./how-to-play-open";
 export { OPEN_HINT_HISTORY_EVENT } from "./hint-history-open";
+export { OPEN_LEADERBOARD_EVENT } from "./leaderboard-open";
 
 type PageHeaderProps = {
   /** When false, only the logo and accent bar (matches legal/static pages). */
@@ -133,6 +135,29 @@ export default function PageHeader({
                     {hintCount}
                   </span>
                 )}
+              </button>
+            ) : null}
+            {showHowToPlay ? (
+              <button
+                type="button"
+                className="page-header-icon-btn page-header-leaderboard-btn"
+                aria-label="Leaderboard"
+                onClick={() => dispatchOpenLeaderboard()}
+              >
+                <svg
+                  className="page-header-icon-btn__glyph"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden
+                >
+                  <path
+                    d="M6 9H2v12h4V9zm6-6h-4v18h4V3zm6 10h-4v8h4v-8z"
+                    fill="currentColor"
+                  />
+                </svg>
               </button>
             ) : null}
             {showHowToPlay ? (

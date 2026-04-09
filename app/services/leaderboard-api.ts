@@ -1,4 +1,4 @@
-export type TodayLeaderboardEntry = {
+export type TodayEntry = {
   rank: number;
   email: string;
   num_guesses: number;
@@ -6,43 +6,39 @@ export type TodayLeaderboardEntry = {
   hints_used: number;
 };
 
-export type AllTimeLeaderboardEntry = {
+export type PeriodEntry = {
   rank: number;
   email: string;
-  games_played: number;
   games_won: number;
-  win_pct: number;
-  avg_guesses: number;
-  avg_time: number | null;
+  points: number;
 };
 
-export async function fetchTodayLeaderboard(
-  puzzleDay: number,
-): Promise<TodayLeaderboardEntry[]> {
+async function fetchJson<T>(url: string): Promise<T[]> {
   try {
-    const res = await fetch(
-      `/api/user/leaderboard/today?puzzle_day=${puzzleDay}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();
-    if (!json.success) return [];
-    return json.data as TodayLeaderboardEntry[];
+    if (!json.success || !Array.isArray(json.data)) return [];
+    return json.data as T[];
   } catch {
     return [];
   }
 }
 
-export async function fetchAllTimeLeaderboard(): Promise<AllTimeLeaderboardEntry[]> {
-  try {
-    const res = await fetch("/api/user/leaderboard/all-time", {
-      cache: "no-store",
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    if (!json.success) return [];
-    return json.data as AllTimeLeaderboardEntry[];
-  } catch {
-    return [];
-  }
+export function fetchTodayLeaderboard(puzzleDay: number): Promise<TodayEntry[]> {
+  return fetchJson<TodayEntry>(
+    `/api/user/leaderboard/today?puzzle_day=${puzzleDay}`,
+  );
+}
+
+export function fetchWeeklyLeaderboard(): Promise<PeriodEntry[]> {
+  return fetchJson<PeriodEntry>("/api/user/leaderboard/weekly");
+}
+
+export function fetchMonthlyLeaderboard(): Promise<PeriodEntry[]> {
+  return fetchJson<PeriodEntry>("/api/user/leaderboard/monthly");
+}
+
+export function fetchOverallLeaderboard(): Promise<PeriodEntry[]> {
+  return fetchJson<PeriodEntry>("/api/user/leaderboard/all-time");
 }
