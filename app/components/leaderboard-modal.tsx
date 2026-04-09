@@ -175,7 +175,7 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateK
     cache.current.todayPuzzleDay = puzzleDay;
   }
 
-  const fetchTab = useRef<(tab: Tab, silent: boolean) => void>();
+  const fetchTab = useRef<(tab: Tab, silent: boolean) => void>(undefined);
 
   fetchTab.current = (t: Tab, silent: boolean) => {
     if (t === "today" && puzzleDay == null) return;
