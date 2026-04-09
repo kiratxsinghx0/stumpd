@@ -1434,14 +1434,15 @@ export default function Game() {
           liveStats={liveStats}
           gameResultPayload={lastGameResult}
           todayRank={todayRank}
-          onAuthChange={() => {
+          onAuthChange={async () => {
             fetchLiveStats().then(setLiveStats).catch(() => {});
 
             if (lastGameResult) {
-              postGameResult(lastGameResult).then((result) => {
+              try {
+                const result = await postGameResult(lastGameResult);
                 if (result?.todayRank) setTodayRank(result.todayRank);
                 setLbInvalidateKey(k => k + 1);
-              }).catch(() => {});
+              } catch { /* non-critical */ }
             }
 
             const local = readStats();

@@ -38,7 +38,7 @@ type Props = {
   maxHints?: number;
   liveStats?: LiveStats | null;
   gameResultPayload?: GameResultPayload | null;
-  onAuthChange?: () => void;
+  onAuthChange?: () => Promise<void> | void;
   todayRank?: number;
 };
 
@@ -364,7 +364,7 @@ function SignupPrompt({
   onAuthChange,
 }: {
   gameResultPayload?: GameResultPayload | null;
-  onAuthChange?: () => void;
+  onAuthChange?: () => Promise<void> | void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -608,7 +608,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
               <LeaderboardNudge won={won} />
               <SignupPrompt
                 gameResultPayload={gameResultPayload}
-                onAuthChange={() => { onAuthChange?.(); setLbRefreshKey(k => k + 1); }}
+                onAuthChange={async () => { await onAuthChange?.(); setLbRefreshKey(k => k + 1); }}
               />
               <SharePersonalStats stats={stats} />
               <ShareCommunityPulse
@@ -628,7 +628,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
               <LeaderboardNudge won={won} />
               <SignupPrompt
                 gameResultPayload={gameResultPayload}
-                onAuthChange={() => { onAuthChange?.(); setLbRefreshKey(k => k + 1); }}
+                onAuthChange={async () => { await onAuthChange?.(); setLbRefreshKey(k => k + 1); }}
               />
               <SharePersonalStats stats={stats} />
               <ShareCommunityPulse
