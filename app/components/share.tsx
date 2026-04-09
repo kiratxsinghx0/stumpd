@@ -211,12 +211,14 @@ function DistributionChart({ userGuess, won, distribution }: { userGuess: number
 function MiniTodayLeaderboard({ puzzleDay, refreshKey }: { puzzleDay?: number; refreshKey?: number }) {
   const [rows, setRows] = useState<TodayEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const initialKey = useRef(refreshKey);
 
   useEffect(() => {
     if (puzzleDay == null) return;
     let cancelled = false;
+    const bustCache = refreshKey !== initialKey.current;
     setLoaded(false);
-    fetchTodayLeaderboard(puzzleDay)
+    fetchTodayLeaderboard(puzzleDay, bustCache)
       .then((d) => { if (!cancelled) setRows(d.slice(0, 5)); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoaded(true); });

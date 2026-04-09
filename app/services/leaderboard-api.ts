@@ -13,9 +13,12 @@ export type PeriodEntry = {
   points: number;
 };
 
-async function fetchJson<T>(url: string): Promise<T[]> {
+async function fetchJson<T>(url: string, bustCache = false): Promise<T[]> {
   try {
-    const res = await fetch(url);
+    const finalUrl = bustCache
+      ? `${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`
+      : url;
+    const res = await fetch(finalUrl, bustCache ? { cache: "no-store" } : undefined);
     if (!res.ok) return [];
     const json = await res.json();
     if (!json.success || !Array.isArray(json.data)) return [];
@@ -25,9 +28,10 @@ async function fetchJson<T>(url: string): Promise<T[]> {
   }
 }
 
-export function fetchTodayLeaderboard(puzzleDay: number): Promise<TodayEntry[]> {
+export function fetchTodayLeaderboard(puzzleDay: number, bustCache = false): Promise<TodayEntry[]> {
   return fetchJson<TodayEntry>(
     `/api/user/leaderboard/today?puzzle_day=${puzzleDay}`,
+    bustCache,
   );
 }
 

@@ -164,10 +164,12 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateK
   const [, forceUpdate] = useState(0);
   const cache = useRef<CacheMap>({ ...EMPTY_CACHE });
   const lastInvalidateKey = useRef(invalidateKey);
+  const bustNextTodayFetch = useRef(false);
 
   if (invalidateKey !== lastInvalidateKey.current) {
     cache.current.today = null;
     lastInvalidateKey.current = invalidateKey;
+    bustNextTodayFetch.current = true;
   }
 
   if (tab === "today" && cache.current.todayPuzzleDay !== puzzleDay) {
@@ -188,7 +190,9 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateK
         const now = Date.now();
         switch (t) {
           case "today": {
-            const data = await fetchTodayLeaderboard(puzzleDay!);
+            const bust = bustNextTodayFetch.current;
+            bustNextTodayFetch.current = false;
+            const data = await fetchTodayLeaderboard(puzzleDay!, bust);
             if (!cancelled) cache.current.today = { data: data.slice(0, 10), fetchedAt: now };
             break;
           }
