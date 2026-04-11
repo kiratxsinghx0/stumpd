@@ -4,6 +4,7 @@ export type TodayEntry = {
   num_guesses: number;
   time_seconds: number | null;
   hints_used: number;
+  is_hard_mode_today?: boolean;
 };
 
 export type PeriodEntry = {
@@ -11,6 +12,14 @@ export type PeriodEntry = {
   email: string;
   games_won: number;
   points: number;
+  is_hard_mode_today?: boolean;
+};
+
+export type HardModeTodayEntry = {
+  rank: number;
+  email: string;
+  num_guesses: number;
+  time_seconds: number | null;
 };
 
 async function fetchJson<T>(url: string, bustCache = false): Promise<T[]> {
@@ -28,6 +37,8 @@ async function fetchJson<T>(url: string, bustCache = false): Promise<T[]> {
   }
 }
 
+/* ── Normal leaderboards ── */
+
 export function fetchTodayLeaderboard(puzzleDay: number, bustCache = false): Promise<TodayEntry[]> {
   return fetchJson<TodayEntry>(
     `/api/user/leaderboard/today?puzzle_day=${puzzleDay}`,
@@ -35,14 +46,41 @@ export function fetchTodayLeaderboard(puzzleDay: number, bustCache = false): Pro
   );
 }
 
-export function fetchWeeklyLeaderboard(): Promise<PeriodEntry[]> {
-  return fetchJson<PeriodEntry>("/api/user/leaderboard/weekly");
+export function fetchWeeklyLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
+  const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
+  return fetchJson<PeriodEntry>(`/api/user/leaderboard/weekly${qs}`);
 }
 
-export function fetchMonthlyLeaderboard(): Promise<PeriodEntry[]> {
-  return fetchJson<PeriodEntry>("/api/user/leaderboard/monthly");
+export function fetchMonthlyLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
+  const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
+  return fetchJson<PeriodEntry>(`/api/user/leaderboard/monthly${qs}`);
 }
 
-export function fetchOverallLeaderboard(): Promise<PeriodEntry[]> {
-  return fetchJson<PeriodEntry>("/api/user/leaderboard/all-time");
+export function fetchOverallLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
+  const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
+  return fetchJson<PeriodEntry>(`/api/user/leaderboard/all-time${qs}`);
+}
+
+/* ── Hard mode leaderboards ── */
+
+export function fetchHardModeTodayLeaderboard(puzzleDay: number, bustCache = false): Promise<HardModeTodayEntry[]> {
+  return fetchJson<HardModeTodayEntry>(
+    `/api/user/leaderboard/hard-mode/today?puzzle_day=${puzzleDay}`,
+    bustCache,
+  );
+}
+
+export function fetchHardModeWeeklyLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
+  const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
+  return fetchJson<PeriodEntry>(`/api/user/leaderboard/hard-mode/weekly${qs}`);
+}
+
+export function fetchHardModeMonthlyLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
+  const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
+  return fetchJson<PeriodEntry>(`/api/user/leaderboard/hard-mode/monthly${qs}`);
+}
+
+export function fetchHardModeOverallLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
+  const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
+  return fetchJson<PeriodEntry>(`/api/user/leaderboard/hard-mode/all-time${qs}`);
 }

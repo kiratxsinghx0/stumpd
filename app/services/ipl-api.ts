@@ -11,6 +11,7 @@ export type PuzzleData = {
   isShortened: boolean;
   hints: PuzzleHintEntry[] | null;
   setAt: string;
+  yesterdayAnswer?: string | null;
 };
 
 function decodePuzzle(data: PuzzleData): PuzzleData {
@@ -46,6 +47,16 @@ export async function fetchPuzzleToday(): Promise<PuzzleData> {
 
 export async function fetchPuzzleByDay(day: number): Promise<PuzzleData> {
   const res = await fetch(`/api/ipl/puzzle/day/${day}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API returned ${res.status}`);
+  const json = await res.json();
+  if (!json.success || !json.data) throw new Error("Unexpected response shape");
+  return decodePuzzle(json.data as PuzzleData);
+}
+
+export async function fetchHardModePuzzleToday(): Promise<PuzzleData> {
+  const res = await fetch("/api/ipl/puzzle/today/hard", {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`API returned ${res.status}`);

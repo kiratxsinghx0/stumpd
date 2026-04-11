@@ -29,12 +29,18 @@ export async function incrementLiveStats(
   puzzleDay: number,
   won: boolean,
   numGuesses: number,
+  hardMode?: boolean,
 ): Promise<void> {
   try {
-    const key = `${LS_INCREMENT_PREFIX}${puzzleDay}`;
+    const suffix = hardMode ? "hard" : "normal";
+    const key = `${LS_INCREMENT_PREFIX}${suffix}_${puzzleDay}`;
     if (typeof window !== "undefined" && localStorage.getItem(key)) return;
 
-    await fetch("/api/live-stats/increment", {
+    const endpoint = hardMode
+      ? "/api/live-stats/hard-mode/increment"
+      : "/api/live-stats/increment";
+
+    await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ puzzle_day: puzzleDay, won, num_guesses: numGuesses }),

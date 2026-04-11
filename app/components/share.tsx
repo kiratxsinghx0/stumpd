@@ -7,7 +7,7 @@ import ReminderPrompt from "./reminder-prompt";
 import { register, login, isLoggedIn, postGameResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { readStats } from "../stumpd/stats-storage";
-import { getAccuracyBadge } from "../utils/accuracy-badge";
+import { getAccuracyBadge, getGodmodeBadge } from "../utils/accuracy-badge";
 import { SITE_URL } from "../../lib/site";
 import { fetchTodayLeaderboard } from "../services/leaderboard-api";
 import type { TodayEntry } from "../services/leaderboard-api";
@@ -40,6 +40,7 @@ type Props = {
   gameResultPayload?: GameResultPayload | null;
   onAuthChange?: () => Promise<void> | void;
   todayRank?: number;
+  hardMode?: boolean;
 };
 
 function formatCompactCount(n: number): string {
@@ -303,6 +304,7 @@ function SharePreviewCard({
   puzzleDay,
   hintsUsed,
   maxHints,
+  hardMode,
 }: {
   statuses: string[][];
   guessCount: number;
@@ -311,6 +313,7 @@ function SharePreviewCard({
   puzzleDay?: number;
   hintsUsed?: number;
   maxHints?: number;
+  hardMode?: boolean;
 }) {
   const rows = statuses.slice(0, guessCount);
   const isStumpd = !!gameTitle;
@@ -321,11 +324,15 @@ function SharePreviewCard({
           <span className="share-preview-card__stumpd-title">
             {gameTitle} #{puzzleDay ?? "?"}
           </span>
-          {hintsUsed != null && maxHints != null && (
+          {hardMode ? (
+            <span className="share-preview-card__stumpd-hints share-preview-card__stumpd-hints--hard">
+              🔱 Godmode
+            </span>
+          ) : hintsUsed != null && maxHints != null ? (
             <span className="share-preview-card__stumpd-hints">
               Hints used: {hintsUsed}/{maxHints}
             </span>
-          )}
+          ) : null}
         </div>
       )}
       <div className="share-preview-card__grid">
@@ -474,14 +481,14 @@ function formatElapsed(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints, liveStats, gameResultPayload, onAuthChange, todayRank }: Props) {
+export default function ShareModal({ won, answer, guessCount, statuses, stats, elapsedSeconds, onClose, gameTitle, puzzleDay, hintsUsed, maxHints, liveStats, gameResultPayload, onAuthChange, todayRank, hardMode = false }: Props) {
   void answer;
   const [copied, setCopied] = useState(false);
   const [lbRefreshKey, setLbRefreshKey] = useState(0);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current); }, []);
   const isStumpd = !!gameTitle;
-  const badge = getAccuracyBadge(won, guessCount);
+  const badge = won && hardMode ? getGodmodeBadge(guessCount) : getAccuracyBadge(won, guessCount);
 
   const dist = liveStats?.distribution ?? FALLBACK_DISTRIBUTION;
   const playedToday = liveStats?.totalPlayed ?? FALLBACK_PLAYED_TODAY;
@@ -527,6 +534,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
         ? "Last-ball finish!"
         : `Chased it in ${guessCount} ${ballsWord}`;
       const hintsFlex = hintsUsed === 0 ? " · No hints" : "";
+      const hardModeLine = hardMode ? "🔱 Godmode · Zero hints" : undefined;
       const lbLine = todayRank && todayRank > 0 && todayRank <= 10
         ? `📊 #${todayRank} on today's leaderboard`
         : undefined;
@@ -534,6 +542,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
         header,
         "",
         `${badge.emoji} ${badge.label}`,
+        hardModeLine,
         `${chaseLine}${hintsFlex}`,
         `⚡ SR: ${strikeRate} | ⏱ ${timeStr}`,
         streakLine || undefined,
@@ -653,6 +662,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
             puzzleDay={puzzleDay}
             hintsUsed={hintsUsed}
             maxHints={maxHints}
+            hardMode={hardMode}
           />
         </div>
 

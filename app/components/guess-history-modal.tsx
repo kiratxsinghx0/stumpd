@@ -15,6 +15,7 @@ type Props = {
   totalHints: number;
   answerRevealed: boolean;
   answerDisplay: string;
+  hardMode?: boolean;
 };
 
 export default function GuessHistoryModal({
@@ -24,6 +25,7 @@ export default function GuessHistoryModal({
   totalHints,
   answerRevealed,
   answerDisplay,
+  hardMode = false,
 }: Props) {
   const [mounted, setMounted] = useState(false);
 
@@ -68,11 +70,13 @@ export default function GuessHistoryModal({
           ✕
         </button>
 
-        <h2 className="hint-history-modal-title">Your Clues</h2>
+        <h2 className="hint-history-modal-title">{hardMode ? "Godmode" : "Your Clues"}</h2>
         <p className="hint-history-modal-subtitle">
-          {hints.length === 0
-            ? "Start guessing to unlock clues"
-            : `${hints.length} of ${totalHints} clues unlocked`}
+          {hardMode
+            ? "No hints — pure letter matching only"
+            : hints.length === 0
+              ? "Start guessing to unlock clues"
+              : `${hints.length} of ${totalHints} clues unlocked`}
         </p>
 
         <div className="hint-history-modal-progress">

@@ -4,7 +4,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const puzzleDay = searchParams.get("puzzle_day") || "";
   const qs = puzzleDay ? `?puzzle_day=${encodeURIComponent(puzzleDay)}` : "";
-  return proxyGet(`/api/user/leaderboard/weekly${qs}`, {
-    cacheControl: "public, s-maxage=60, stale-while-revalidate=120",
+  return proxyGet(`/api/user/leaderboard/hard-mode/all-time${qs}`, {
+    cacheControl: "public, s-maxage=120, stale-while-revalidate=300",
   });
 }
