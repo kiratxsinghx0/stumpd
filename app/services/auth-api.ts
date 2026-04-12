@@ -126,11 +126,17 @@ export async function syncGameHistory(): Promise<void> {
     const { readGameHistory } = await import("../stumpd/stats-storage");
     const results = readGameHistory();
     if (results.length === 0) return;
-    await fetch("/api/user/sync-results", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ results }),
-    });
+    const normalResults = results.filter((r) => !r.hard_mode);
+    const hardResults = results.filter((r) => r.hard_mode);
+    const headers = { "Content-Type": "application/json", ...authHeaders() };
+    const promises: Promise<Response>[] = [];
+    if (normalResults.length > 0) {
+      promises.push(fetch("/api/user/sync-results", { method: "POST", headers, body: JSON.stringify({ results: normalResults }) }));
+    }
+    if (hardResults.length > 0) {
+      promises.push(fetch("/api/user/hard-mode/sync-results", { method: "POST", headers, body: JSON.stringify({ results: hardResults }) }));
+    }
+    await Promise.all(promises);
   } catch {
     /* non-critical */
   }

@@ -44,12 +44,12 @@ export function readGameHistory(): GameResultPayload[] {
   }
 }
 
-/** Append a game result to localStorage history (de-duped by puzzle_day). */
+/** Append a game result to localStorage history (de-duped by puzzle_day + hard_mode). */
 export function saveGameToHistory(result: GameResultPayload): void {
   if (typeof window === "undefined") return;
   try {
     const history = readGameHistory();
-    if (history.some((r) => r.puzzle_day === result.puzzle_day)) return;
+    if (history.some((r) => r.puzzle_day === result.puzzle_day && !!r.hard_mode === !!result.hard_mode)) return;
     history.push(result);
     localStorage.setItem(LS_GAME_HISTORY_KEY, JSON.stringify(history));
   } catch {
