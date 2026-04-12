@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import ShareModal from "../components/share";
 import HowToPlayModal from "../components/how-to-play-modal";
 import GuessHistoryModal from "../components/guess-history-modal";
@@ -215,6 +215,7 @@ const LS_HARD_MODE_KEY = "stumpdpuzzle_hardMode";
 const LS_HARD_GUESS_KEY = "stumpdpuzzle_hard_guess";
 const LS_HARD_PUZZLE_ID_KEY = "stumpdpuzzle_hard_puzzleId";
 const LS_HARD_TIMER_ELAPSED_KEY = "stumpdpuzzle_hard_timerElapsed";
+const LS_HARD_SHARE_DISMISSED_PUZZLE_KEY = "stumpdpuzzle_hard_shareDismissedPuzzleId";
 
 const GAME_STORAGE_KEYS = [
   LS_GUESS_KEY,
@@ -228,6 +229,7 @@ const GAME_STORAGE_KEYS = [
   LS_HARD_GUESS_KEY,
   LS_HARD_PUZZLE_ID_KEY,
   LS_HARD_TIMER_ELAPSED_KEY,
+  LS_HARD_SHARE_DISMISSED_PUZZLE_KEY,
 ] as const;
 
 /**
@@ -248,19 +250,21 @@ function syncGameIdStorage(gameId: string): void {
   }
 }
 
-function persistShareDismissed(puzzleId: string) {
+function persistShareDismissed(puzzleId: string, hard?: boolean) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(LS_SHARE_DISMISSED_PUZZLE_KEY, puzzleId);
+    const key = hard ? LS_HARD_SHARE_DISMISSED_PUZZLE_KEY : LS_SHARE_DISMISSED_PUZZLE_KEY;
+    localStorage.setItem(key, puzzleId);
   } catch {
     /* quota / private mode */
   }
 }
 
-function readShareDismissedForPuzzle(puzzleId: string): boolean {
+function readShareDismissedForPuzzle(puzzleId: string, hard?: boolean): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return localStorage.getItem(LS_SHARE_DISMISSED_PUZZLE_KEY) === puzzleId;
+    const key = hard ? LS_HARD_SHARE_DISMISSED_PUZZLE_KEY : LS_SHARE_DISMISSED_PUZZLE_KEY;
+    return localStorage.getItem(key) === puzzleId;
   } catch {
     return false;
   }
@@ -430,7 +434,6 @@ export default function Game() {
   const [hardMode, setHardMode] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
-      if (isGodmodeActive()) return true;
       return localStorage.getItem(LS_HARD_MODE_KEY) === "1";
     } catch { return false; }
   });
@@ -575,10 +578,6 @@ export default function Game() {
     const cachedActive = isGodmodeActive();
     setGodmodeActive(cachedActive);
     setGodmodeHoursLeft(cachedActive ? getGodmodeHoursRemaining() : 0);
-    if (cachedActive) {
-      setHardMode(true);
-      try { localStorage.setItem(LS_HARD_MODE_KEY, "1"); } catch { /* */ }
-    }
     const user = getStoredUser();
     setUserInitial(user?.email ? user.email.charAt(0).toUpperCase() : "");
 
@@ -588,10 +587,6 @@ export default function Game() {
       active = server.active;
       setGodmodeActive(server.active);
       setGodmodeHoursLeft(server.hours_remaining);
-      if (server.active) {
-        setHardMode(true);
-        try { localStorage.setItem(LS_HARD_MODE_KEY, "1"); } catch { /* */ }
-      }
     }
 
     if (opts?.triggerReentry && active) {
@@ -605,7 +600,10 @@ export default function Game() {
     refreshGodmodeState({ triggerReentry: true });
   }, [refreshGodmodeState]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'327401'},body:JSON.stringify({sessionId:'327401',location:'stumpd-game.tsx:useLayoutEffect-body-class',message:'body class toggle',data:{godmodeActive,showGodmodeUnlock,bodyClasses:document.body.className},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (godmodeActive && !showGodmodeUnlock) {
       document.body.classList.add("body--godmode");
     } else if (!godmodeActive) {
@@ -877,7 +875,7 @@ export default function Game() {
 
     let isHardRestore = false;
     try {
-      isHardRestore = isGodmodeActive() || localStorage.getItem(LS_HARD_MODE_KEY) === "1";
+      isHardRestore = localStorage.getItem(LS_HARD_MODE_KEY) === "1";
       const timerKey = isHardRestore ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
       const savedElapsed = localStorage.getItem(timerKey);
       if (savedElapsed) {
@@ -895,7 +893,7 @@ export default function Game() {
       const last = loaded.guesses[loaded.guesses.length - 1];
       const wasStoredWin = isSamePlayer(last, answer, playerList, puzzleAnswerFullName, isHard);
       const gameDone = wasStoredWin || loaded.guesses.length === MAX_GUESSES;
-      const dismissedShare = gameDone && readShareDismissedForPuzzle(currentGameId);
+      const dismissedShare = gameDone && readShareDismissedForPuzzle(currentGameId, isHard);
       setGuesses(loaded.guesses);
       setStatuses(loaded.statuses);
       setLetterStatus(letterStatusFromRows(loaded.guesses, loaded.statuses));
@@ -1010,7 +1008,10 @@ export default function Game() {
 
         if (isLoggedIn()) {
           const progress = readCurrentGameProgress(isHard, Number(gameId));
-          if (progress) saveGameProgress(progress).catch(() => {});
+          if (progress) {
+            progress.elapsed_seconds = elapsedSecondsRef.current;
+            saveGameProgress(progress).catch(() => {});
+          }
         }
 
         const justWon = isSamePlayer(guess, ans, pl, fullName, isHard);
@@ -1115,13 +1116,13 @@ export default function Game() {
     }
   }, [allAnimationsComplete]);
 
-  // Show modal after game ends (slight delay so all animations finish); not if share already dismissed (e.g. reload)
+  // Show modal after game ends (slight delay so all animations finish); not if share already dismissed (e.g. reload) or settings open (mode switch)
   useEffect(() => {
-    if (allAnimationsComplete && !shareDismissed) {
+    if (allAnimationsComplete && !shareDismissed && !showSettings) {
       const t = setTimeout(() => setShowModal(true), 1800);
       return () => clearTimeout(t);
     }
-  }, [allAnimationsComplete, shareDismissed]);
+  }, [allAnimationsComplete, shareDismissed, showSettings]);
 
   useEffect(() => {
     if (!showModal) return;
@@ -1224,8 +1225,8 @@ export default function Game() {
       ["","","","",""],
     ];
     return (
-      <div className="game-page__content">
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
+      <div className={`game-page__content${godmodeActive ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
         <div className="game-error">
           <div className="game-error__ghost-grid" aria-hidden="true">
             {ghostColors.map((row, ri) => (
@@ -1267,8 +1268,8 @@ export default function Game() {
 
   if (!puzzleData || (playersLoading && playerList.length === 0)) {
     return (
-      <div className="game-page__content">
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
+      <div className={`game-page__content${godmodeActive ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
         <div className="game-loading">
           <div className="game-loading__spinner" />
           <p className="game-loading__text">Loading puzzle…</p>
@@ -1279,8 +1280,8 @@ export default function Game() {
 
   if (!targetPlayer && !playersLoading) {
     return (
-      <div className="game-page__content">
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
+      <div className={`game-page__content${godmodeActive ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
         <div className="game-error">
           <div className="game-error__card">
             <div className="game-error__icon-wrap">
@@ -1304,6 +1305,9 @@ export default function Game() {
   }
 
   const useDarkTheme = godmodeActive;
+  // #region agent log
+  if (typeof window !== 'undefined') fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'327401'},body:JSON.stringify({sessionId:'327401',location:'stumpd-game.tsx:render-useDarkTheme',message:'render pass',data:{useDarkTheme,godmodeActive},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   const activeColorMap = useDarkTheme ? GODMODE_STATUS_COLOR : STATUS_COLOR;
   const defaultKeyBg = useDarkTheme ? "#2a2e3a" : "#d3d6da";
   const defaultKeyColor = useDarkTheme ? "#e0c97f" : "#000";
@@ -1697,7 +1701,7 @@ export default function Game() {
         onClose={() => setShowSettings(false)}
         hardMode={hardMode}
         onToggleHardMode={(enabled: boolean, origin?: ToggleOrigin) => {
-          if (enabled && guesses.length > 0) return;
+          if (guesses.length > 0 && !won && !lost) return;
           if (enabled && origin) {
             setHmTransOrigin(origin);
             setHmTransition(true);
@@ -1705,12 +1709,19 @@ export default function Game() {
           setHardMode(enabled);
           try { localStorage.setItem(LS_HARD_MODE_KEY, enabled ? "1" : "0"); } catch { /* */ }
         }}
-        canEnableHardMode={!won && !lost && guesses.length === 0}
-        canDisableHardMode={!won && !lost && guesses.length === 0}
+        canEnableHardMode={guesses.length === 0 || gameOver}
+        canDisableHardMode={guesses.length === 0 || gameOver}
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
           await refreshGodmodeState({ triggerReentry: isLoggedIn() });
           fetchLiveStats().then(setLiveStats).catch(() => {});
+          if (puzzleData?.day) {
+            const progress = readCurrentGameProgress(hardMode, puzzleData.day);
+            if (progress) {
+              progress.elapsed_seconds = elapsedSecondsRef.current;
+              saveGameProgress(progress).catch(() => {});
+            }
+          }
           const local = readStats();
           fetchMyStats().then((server) => {
             if (!server) return;
@@ -1746,6 +1757,13 @@ export default function Game() {
           onAuthChange={async () => {
             await refreshGodmodeState({ triggerReentry: isLoggedIn() });
             fetchLiveStats().then(setLiveStats).catch(() => {});
+            if (puzzleData?.day) {
+              const progress = readCurrentGameProgress(hardMode, puzzleData.day);
+              if (progress) {
+                progress.elapsed_seconds = elapsedSecondsRef.current;
+                saveGameProgress(progress).catch(() => {});
+              }
+            }
 
             if (lastGameResult) {
               try {
@@ -1775,7 +1793,7 @@ export default function Game() {
           onClose={() => {
             setShowModal(false);
             setShareDismissed(true);
-            persistShareDismissed(currentGameId);
+            persistShareDismissed(currentGameId, hardMode);
           }}
         />
       )}

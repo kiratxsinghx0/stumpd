@@ -70,6 +70,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("stumpd_auth_token");var g=localStorage.getItem("stumpdpuzzle_hmChampionTs");var a=t&&g&&Date.now()-Number(g)<864e5;fetch("http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"327401"},body:JSON.stringify({sessionId:"327401",location:"layout-inline-script",message:"godmode-early check",data:{hasToken:!!t,hasTs:!!g,ts:g,active:!!a},timestamp:Date.now(),hypothesisId:"E-inline"})}).catch(function(){});if(a){document.documentElement.classList.add("godmode-early")}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
         style={{
           fontFamily:

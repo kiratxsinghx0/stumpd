@@ -409,7 +409,6 @@ button:not(.game-key):not(.game-key-wide):active {
     0 4px 12px rgba(0, 0, 0, 0.02);
   flex-shrink: 0;
   position: relative;
-  overflow: hidden;
 }
 
 @media (max-width: 767px) {
@@ -6929,6 +6928,21 @@ a.page-header-icon-btn {
    + body.body--godmode on <body>
    ══════════════════════════════════════════════════════════════ */
 
+html.godmode-early body {
+  background-color: #1a1a2e !important;
+  color: #e2e8f0;
+}
+html.godmode-early .page-header {
+  background: #0f172a !important;
+}
+html.godmode-early .page-header-bar {
+  background-color: #0f172a;
+}
+html.godmode-early .page-title-accent {
+  background: linear-gradient(90deg, #d97706 0%, #f59e0b 30%, #fbbf24 60%, #fcd34d 85%, #fde68a 100%) !important;
+  background-size: 200% 100%;
+}
+
 body.body--godmode {
   background-color: #1a1a2e !important;
   color: #e2e8f0;
@@ -6939,6 +6953,10 @@ body.body--godmode {
   color: #e2e8f0;
 }
 
+.godmode-theme .page-header {
+  background: #0f172a;
+  box-shadow: none;
+}
 .godmode-theme .page-header-bar {
   background-color: #0f172a;
 }
