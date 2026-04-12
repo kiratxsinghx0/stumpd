@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { GameStats, LiveStats } from "./games";
-import NextPuzzleTimer from "./timers";
 import ReminderPrompt from "./reminder-prompt";
 import { register, login, isLoggedIn, postGameResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
@@ -648,9 +647,6 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 solvedPercent={solvedPercent}
               />
               <MiniTodayLeaderboard puzzleDay={puzzleDay} refreshKey={lbRefreshKey} />
-              <div className="share-loss-timer">
-                <NextPuzzleTimer />
-              </div>
             </>
           )}
 

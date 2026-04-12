@@ -5841,6 +5841,16 @@ a.page-header-icon-btn {
 .gmu-overlay--reentry {
   animation: gmu-backdrop-in 0.3s ease both;
 }
+.gmu-overlay--reentry.gmu-overlay--intro {
+  background: #1a1a2e;
+  animation: gmu-intro-pulse 0.4s ease both;
+}
+@keyframes gmu-intro-pulse {
+  0%   { opacity: 0; }
+  60%  { opacity: 1; }
+  80%  { background: #221a3a; }
+  100% { opacity: 1; background: #1a1a2e; }
+}
 .gmu-overlay--reentry.gmu-overlay--flooding {
   animation: gmu-backdrop-in 0.3s ease both, gmu-backdrop-to-godmode 0.9s ease 0.1s both;
 }
@@ -6928,9 +6938,10 @@ a.page-header-icon-btn {
    + body.body--godmode on <body>
    ══════════════════════════════════════════════════════════════ */
 
+html.godmode-early,
 html.godmode-early body {
   background-color: #1a1a2e !important;
-  color: #e2e8f0;
+  color: #e2e8f0 !important;
 }
 html.godmode-early .page-header {
   background: #0f172a !important;
@@ -6941,6 +6952,18 @@ html.godmode-early .page-header-bar {
 html.godmode-early .page-title-accent {
   background: linear-gradient(90deg, #d97706 0%, #f59e0b 30%, #fbbf24 60%, #fcd34d 85%, #fde68a 100%) !important;
   background-size: 200% 100%;
+}
+html.godmode-early .game-page,
+html.godmode-early .game-page__content {
+  background-color: #1a1a2e;
+  color: #e2e8f0;
+}
+html.godmode-early .game-loading__text {
+  color: #94a3b8;
+}
+html.godmode-early .game-loading__spinner {
+  border-color: rgba(201, 162, 39, 0.3);
+  border-top-color: #fbbf24;
 }
 
 body.body--godmode {

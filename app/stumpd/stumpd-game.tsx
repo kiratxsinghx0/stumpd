@@ -200,6 +200,7 @@ function getLetterStatuses(guess: string, answer: string): string[] {
 }
 
 const LS_GAME_ID_KEY = "stumpdpuzzle_gameId";
+const LS_HARD_GAME_ID_KEY = "stumpdpuzzle_hard_gameId";
 
 const LS_GUESS_KEY = "stumpdpuzzle_guess";
 const LS_USER_HAS_PLAYED_KEY = "stumpdpuzzle_userHasPlayed";
@@ -217,15 +218,17 @@ const LS_HARD_PUZZLE_ID_KEY = "stumpdpuzzle_hard_puzzleId";
 const LS_HARD_TIMER_ELAPSED_KEY = "stumpdpuzzle_hard_timerElapsed";
 const LS_HARD_SHARE_DISMISSED_PUZZLE_KEY = "stumpdpuzzle_hard_shareDismissedPuzzleId";
 
-const GAME_STORAGE_KEYS = [
+const NORMAL_GAME_STORAGE_KEYS = [
   LS_GUESS_KEY,
-  LS_USER_HAS_PLAYED_KEY,
   LS_PUZZLE_ID_KEY,
   LS_SHARE_DISMISSED_PUZZLE_KEY,
   LS_UNLOCKED_HINTS_KEY,
   LS_TIMER_ELAPSED_KEY,
   LS_TIMER_STARTED_KEY,
   LS_USED_TRIVIA_KEY,
+] as const;
+
+const HARD_GAME_STORAGE_KEYS = [
   LS_HARD_GUESS_KEY,
   LS_HARD_PUZZLE_ID_KEY,
   LS_HARD_TIMER_ELAPSED_KEY,
@@ -233,18 +236,20 @@ const GAME_STORAGE_KEYS = [
 ] as const;
 
 /**
- * If persisted `gameId` matches `CURRENT_GAME_ID`, keep game data. Otherwise clear game-related keys
- * and persist the new id (new puzzle / first visit).
+ * Per-mode day guard: only clears that mode's keys when its own puzzle day
+ * rolls over. The other mode's data is never touched.
  */
-function syncGameIdStorage(gameId: string): void {
+function syncGameIdStorage(gameId: string, hardMode?: boolean): void {
   if (typeof window === "undefined") return;
   try {
-    const stored = localStorage.getItem(LS_GAME_ID_KEY);
+    const idKey = hardMode ? LS_HARD_GAME_ID_KEY : LS_GAME_ID_KEY;
+    const keysToClean = hardMode ? HARD_GAME_STORAGE_KEYS : NORMAL_GAME_STORAGE_KEYS;
+    const stored = localStorage.getItem(idKey);
     if (stored === gameId) return;
-    for (const key of GAME_STORAGE_KEYS) {
+    for (const key of keysToClean) {
       localStorage.removeItem(key);
     }
-    localStorage.setItem(LS_GAME_ID_KEY, gameId);
+    localStorage.setItem(idKey, gameId);
   } catch {
     /* quota / private mode */
   }
@@ -322,6 +327,45 @@ function readStoredGuesses(
     return parseGuessObject(raw, targetAnswer, playerList, answerFullName, hardMode);
   } catch {
     return null;
+  }
+}
+
+function isLocalGameCompleted(puzzleId: string, hardMode?: boolean): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const puzzleIdKey = hardMode ? LS_HARD_PUZZLE_ID_KEY : LS_PUZZLE_ID_KEY;
+    return localStorage.getItem(puzzleIdKey) === puzzleId;
+  } catch {
+    return false;
+  }
+}
+
+function writeRemoteToLocalStorage(
+  remote: { guesses_json?: string; completed?: boolean; elapsed_seconds?: number; hints_used?: number; used_trivia_json?: string | null },
+  puzzleId: string,
+  hardMode: boolean,
+  setElapsed?: (v: number) => void,
+  elapsedRef?: React.MutableRefObject<number>,
+  setTrivia?: (v: number[]) => void,
+) {
+  const guessKey = hardMode ? LS_HARD_GUESS_KEY : LS_GUESS_KEY;
+  const puzzleIdKey = hardMode ? LS_HARD_PUZZLE_ID_KEY : LS_PUZZLE_ID_KEY;
+  const timerKey = hardMode ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
+
+  localStorage.setItem(LS_USER_HAS_PLAYED_KEY, LS_USER_HAS_PLAYED_VALUE);
+  if (remote.guesses_json) localStorage.setItem(guessKey, remote.guesses_json);
+  if (remote.completed) localStorage.setItem(puzzleIdKey, puzzleId);
+  if (remote.elapsed_seconds) {
+    localStorage.setItem(timerKey, String(remote.elapsed_seconds));
+    if (setElapsed) setElapsed(remote.elapsed_seconds);
+    if (elapsedRef) elapsedRef.current = remote.elapsed_seconds;
+  }
+  if (!hardMode && remote.hints_used != null && remote.hints_used > 0) {
+    localStorage.setItem(LS_UNLOCKED_HINTS_KEY, JSON.stringify(Array(remote.hints_used).fill({})));
+  }
+  if (!hardMode && remote.used_trivia_json) {
+    localStorage.setItem(LS_USED_TRIVIA_KEY, remote.used_trivia_json);
+    try { if (setTrivia) setTrivia(JSON.parse(remote.used_trivia_json)); } catch { /* */ }
   }
 }
 
@@ -454,6 +498,11 @@ export default function Game() {
           if (prev && prev.day === fresh.day && prev.encoded === fresh.encoded) return prev;
           return fresh;
         });
+        if (isHard) {
+          setHardModePuzzleDay(fresh.day);
+        } else {
+          fetchHardModePuzzleToday().then((hm) => { if (!cancelled) setHardModePuzzleDay(hm.day); }).catch(() => {});
+        }
       } else {
         setPuzzleError(true);
       }
@@ -484,6 +533,7 @@ export default function Game() {
       .then((fresh) => {
         if (cancelled) return;
         setPuzzleData(fresh);
+        if (hardMode) setHardModePuzzleDay(fresh.day);
       })
       .catch(() => {
         if (!cancelled) setPuzzleError(true);
@@ -511,6 +561,7 @@ export default function Game() {
   const [hmTransition, setHmTransition] = useState(false);
   const [hmTransOrigin, setHmTransOrigin] = useState<ToggleOrigin>({ x: 0, y: 0 });
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
+  const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
   const [shareDismissed, setShareDismissed] = useState(false);
   /** Cookie accepted + how to play seen — enables initial trivia before first guess (client-read). */
   const [returningUserHints, setReturningUserHints] = useState(false);
@@ -539,6 +590,7 @@ export default function Game() {
   const [godmodeActive, setGodmodeActive] = useState(false);
   const [godmodeHoursLeft, setGodmodeHoursLeft] = useState(0);
   const [userInitial, setUserInitial] = useState("");
+  const [authVersion, setAuthVersion] = useState(0);
 
   const [playerList, setPlayerList] = useState<IplPlayerRow[]>(() => getInitialPlayerList());
   const answerRef = useRef("");
@@ -576,23 +628,25 @@ export default function Game() {
 
   const refreshGodmodeState = useCallback(async (opts?: { triggerReentry?: boolean }) => {
     const cachedActive = isGodmodeActive();
-    setGodmodeActive(cachedActive);
-    setGodmodeHoursLeft(cachedActive ? getGodmodeHoursRemaining() : 0);
     const user = getStoredUser();
     setUserInitial(user?.email ? user.email.charAt(0).toUpperCase() : "");
 
     let active = cachedActive;
+    let hoursLeft = cachedActive ? getGodmodeHoursRemaining() : 0;
     if (isLoggedIn()) {
       const server = await fetchGodmodeStatus();
       active = server.active;
-      setGodmodeActive(server.active);
-      setGodmodeHoursLeft(server.hours_remaining);
+      hoursLeft = server.hours_remaining;
     }
+
+    setGodmodeHoursLeft(hoursLeft);
 
     if (opts?.triggerReentry && active) {
       setGodmodeReentry(true);
       setGodmodeColorFlood(true);
       setShowGodmodeUnlock(true);
+    } else {
+      setGodmodeActive(active);
     }
   }, []);
 
@@ -601,9 +655,6 @@ export default function Game() {
   }, [refreshGodmodeState]);
 
   useLayoutEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'327401'},body:JSON.stringify({sessionId:'327401',location:'stumpd-game.tsx:useLayoutEffect-body-class',message:'body class toggle',data:{godmodeActive,showGodmodeUnlock,bodyClasses:document.body.className},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (godmodeActive && !showGodmodeUnlock) {
       document.body.classList.add("body--godmode");
     } else if (!godmodeActive) {
@@ -860,9 +911,12 @@ export default function Game() {
   useEffect(() => {
     if (!playerToGuess || !currentGameId) return;
     let cancelled = false;
-    syncGameIdStorage(currentGameId);
 
-    // Reset React state first — prevents stale guesses from a previous puzzle
+    let isHardRestore = false;
+    try { isHardRestore = localStorage.getItem(LS_HARD_MODE_KEY) === "1"; } catch { /* */ }
+
+    syncGameIdStorage(currentGameId, isHardRestore);
+
     setGuesses([]);
     setStatuses([]);
     setLetterStatus({});
@@ -873,9 +927,7 @@ export default function Game() {
     setElapsedSeconds(0);
     setUsedTriviaIndices([]);
 
-    let isHardRestore = false;
     try {
-      isHardRestore = localStorage.getItem(LS_HARD_MODE_KEY) === "1";
       const timerKey = isHardRestore ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
       const savedElapsed = localStorage.getItem(timerKey);
       if (savedElapsed) {
@@ -901,46 +953,70 @@ export default function Game() {
       if (wasStoredWin && last !== answer) setAliasWin(true);
     }
 
-    const loaded = readStoredGuesses(currentGameId, answer, playerList, puzzleAnswerFullName, isHardRestore);
-    if (loaded) {
-      applyLoaded(loaded, isHardRestore);
+    const local = readStoredGuesses(currentGameId, answer, playerList, puzzleAnswerFullName, isHardRestore);
+    const localCompleted = isLocalGameCompleted(currentGameId, isHardRestore);
+
+    if (!isLoggedIn()) {
+      if (local) applyLoaded(local, isHardRestore);
       return;
     }
 
-    if (!isLoggedIn()) return;
+    function pushLocalToDb() {
+      const progress = readCurrentGameProgress(isHardRestore, Number(currentGameId));
+      if (progress) {
+        progress.elapsed_seconds = elapsedSecondsRef.current;
+        saveGameProgress(progress).catch(() => {});
+      }
+    }
 
     fetchGameProgress(Number(currentGameId), isHardRestore).then((remote) => {
       if (cancelled) return;
-      if (!remote.found || !remote.guesses_json) return;
 
-      const guessKey = isHardRestore ? LS_HARD_GUESS_KEY : LS_GUESS_KEY;
-      const puzzleIdKey = isHardRestore ? LS_HARD_PUZZLE_ID_KEY : LS_PUZZLE_ID_KEY;
-      const timerKey = isHardRestore ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
+      const dbFound = remote.found && !!remote.guesses_json;
+      const dbCompleted = remote.completed === true;
 
-      try {
-        localStorage.setItem(LS_USER_HAS_PLAYED_KEY, LS_USER_HAS_PLAYED_VALUE);
-        localStorage.setItem(guessKey, remote.guesses_json);
-        if (remote.completed) localStorage.setItem(puzzleIdKey, currentGameId);
-        if (remote.elapsed_seconds) {
-          localStorage.setItem(timerKey, String(remote.elapsed_seconds));
-          setElapsedSeconds(remote.elapsed_seconds);
-          elapsedSecondsRef.current = remote.elapsed_seconds;
+      // Nothing in DB → localStorage wins
+      if (!dbFound) {
+        if (local) {
+          applyLoaded(local, isHardRestore);
+          pushLocalToDb();
         }
-        if (!isHardRestore && remote.hints_used != null && remote.hints_used > 0) {
-          localStorage.setItem(LS_UNLOCKED_HINTS_KEY, JSON.stringify(Array(remote.hints_used).fill({})));
-        }
-        if (!isHardRestore && remote.used_trivia_json) {
-          localStorage.setItem(LS_USED_TRIVIA_KEY, remote.used_trivia_json);
-          try { setUsedTriviaIndices(JSON.parse(remote.used_trivia_json)); } catch { /* */ }
-        }
-      } catch { /* quota / private mode */ }
+        return;
+      }
 
-      const parsed = parseGuessObject(remote.guesses_json, answer, playerList, puzzleAnswerFullName, isHardRestore);
-      if (parsed) applyLoaded(parsed, isHardRestore);
-    }).catch(() => { /* network failure — localStorage-only fallback is fine */ });
+      const dbParsed = parseGuessObject(remote.guesses_json!, answer, playerList, puzzleAnswerFullName, isHardRestore);
+      const dbGuessCount = dbParsed?.guesses.length ?? 0;
+      const localGuessCount = local?.guesses.length ?? 0;
+
+      // DB is finished → DB always wins
+      if (dbCompleted) {
+        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setUsedTriviaIndices); } catch { /* */ }
+        if (dbParsed) applyLoaded(dbParsed, isHardRestore);
+        return;
+      }
+
+      // DB unfinished, local finished → localStorage wins
+      if (localCompleted && local) {
+        applyLoaded(local, isHardRestore);
+        pushLocalToDb();
+        return;
+      }
+
+      // Both unfinished → more guesses wins
+      if (local && localGuessCount >= dbGuessCount) {
+        applyLoaded(local, isHardRestore);
+        if (localGuessCount > dbGuessCount) pushLocalToDb();
+      } else if (dbParsed) {
+        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setUsedTriviaIndices); } catch { /* */ }
+        applyLoaded(dbParsed, isHardRestore);
+      }
+    }).catch(() => {
+      if (local) applyLoaded(local, isHardRestore);
+    });
 
     return () => { cancelled = true; };
-  }, [playerToGuess, currentGameId, answer, playerList, puzzleAnswerFullName]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerToGuess, currentGameId, answer, playerList, puzzleAnswerFullName, authVersion]);
 
   useEffect(() => {
     if (!timerStarted || gameOver) return;
@@ -1305,9 +1381,6 @@ export default function Game() {
   }
 
   const useDarkTheme = godmodeActive;
-  // #region agent log
-  if (typeof window !== 'undefined') fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'327401'},body:JSON.stringify({sessionId:'327401',location:'stumpd-game.tsx:render-useDarkTheme',message:'render pass',data:{useDarkTheme,godmodeActive},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
   const activeColorMap = useDarkTheme ? GODMODE_STATUS_COLOR : STATUS_COLOR;
   const defaultKeyBg = useDarkTheme ? "#2a2e3a" : "#d3d6da";
   const defaultKeyColor = useDarkTheme ? "#e0c97f" : "#000";
@@ -1649,6 +1722,7 @@ export default function Game() {
         open={showLeaderboard}
         onClose={() => setShowLeaderboard(false)}
         puzzleDay={puzzleData?.day}
+        hardModePuzzleDay={hardModePuzzleDay}
         invalidateKey={lbInvalidateKey}
         isGodmode={godmodeActive}
       />
@@ -1667,6 +1741,7 @@ export default function Game() {
         variant={godmodeReentry ? "reentry" : "unlock"}
         onFloodPeak={async () => {
           if (godmodeReentry) {
+            setGodmodeActive(true);
             document.body.classList.add("body--godmode");
           } else {
             await activateGodmode();
@@ -1714,14 +1789,8 @@ export default function Game() {
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
           await refreshGodmodeState({ triggerReentry: isLoggedIn() });
+          setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
-          if (puzzleData?.day) {
-            const progress = readCurrentGameProgress(hardMode, puzzleData.day);
-            if (progress) {
-              progress.elapsed_seconds = elapsedSecondsRef.current;
-              saveGameProgress(progress).catch(() => {});
-            }
-          }
           const local = readStats();
           fetchMyStats().then((server) => {
             if (!server) return;
@@ -1756,14 +1825,8 @@ export default function Game() {
           hardMode={hardMode}
           onAuthChange={async () => {
             await refreshGodmodeState({ triggerReentry: isLoggedIn() });
+            setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
-            if (puzzleData?.day) {
-              const progress = readCurrentGameProgress(hardMode, puzzleData.day);
-              if (progress) {
-                progress.elapsed_seconds = elapsedSecondsRef.current;
-                saveGameProgress(progress).catch(() => {});
-              }
-            }
 
             if (lastGameResult) {
               try {

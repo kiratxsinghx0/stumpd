@@ -255,11 +255,12 @@ type Props = {
   open: boolean;
   onClose: () => void;
   puzzleDay?: number;
+  hardModePuzzleDay?: number;
   invalidateKey?: number;
   isGodmode?: boolean;
 };
 
-export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateKey, isGodmode }: Props) {
+export default function LeaderboardModal({ open, onClose, puzzleDay, hardModePuzzleDay, invalidateKey, isGodmode }: Props) {
   const [tab, setTab] = useState<Tab>("today");
   const [godmodeView, setGodmodeView] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -271,6 +272,7 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateK
     if (open) {
       setVisible(true);
       setClosing(false);
+      if (isGodmode) setGodmodeView(true);
     } else if (visible) {
       setClosing(true);
       const timer = setTimeout(() => {
@@ -297,16 +299,17 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateK
       cache.current.today = null;
       cache.current.todayPuzzleDay = puzzleDay;
     }
-    if (godmodeView && hardCache.current.todayPuzzleDay !== puzzleDay) {
+    if (godmodeView && hardCache.current.todayPuzzleDay !== hardModePuzzleDay) {
       hardCache.current.today = null;
-      hardCache.current.todayPuzzleDay = puzzleDay;
+      hardCache.current.todayPuzzleDay = hardModePuzzleDay;
     }
   }
 
   const fetchTab = useRef<(tab: Tab, silent: boolean) => void>(undefined);
 
   fetchTab.current = (t: Tab, silent: boolean) => {
-    if (t === "today" && puzzleDay == null) return;
+    const effectiveDay = godmodeView ? hardModePuzzleDay : puzzleDay;
+    if (t === "today" && effectiveDay == null) return;
 
     if (!silent) setLoading(true);
     let cancelled = false;
@@ -319,22 +322,22 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, invalidateK
             case "today": {
               const bust = bustNextTodayFetch.current;
               bustNextTodayFetch.current = false;
-              const data = await fetchHardModeTodayLeaderboard(puzzleDay!, bust);
+              const data = await fetchHardModeTodayLeaderboard(hardModePuzzleDay!, bust);
               if (!cancelled) hardCache.current.today = { data: data.slice(0, 10), fetchedAt: now };
               break;
             }
             case "week": {
-              const data = await fetchHardModeWeeklyLeaderboard(puzzleDay);
+              const data = await fetchHardModeWeeklyLeaderboard(hardModePuzzleDay);
               if (!cancelled) hardCache.current.week = { data: data.slice(0, 10), fetchedAt: now };
               break;
             }
             case "month": {
-              const data = await fetchHardModeMonthlyLeaderboard(puzzleDay);
+              const data = await fetchHardModeMonthlyLeaderboard(hardModePuzzleDay);
               if (!cancelled) hardCache.current.month = { data: data.slice(0, 10), fetchedAt: now };
               break;
             }
             case "overall": {
-              const data = await fetchHardModeOverallLeaderboard(puzzleDay);
+              const data = await fetchHardModeOverallLeaderboard(hardModePuzzleDay);
               if (!cancelled) hardCache.current.overall = { data: data.slice(0, 10), fetchedAt: now };
               break;
             }

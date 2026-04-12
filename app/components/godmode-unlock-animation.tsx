@@ -80,6 +80,7 @@ const PHASE2_DURATION = 2000;
 const FLOOD_PEAK_AT = 900;
 const PHASE3_DURATION = 800;
 
+const RE_INTRO_DURATION = 400;
 const RE_SLAM_DURATION = 600;
 const RE_HOLD_DURATION = 400;
 const RE_FLOOD_DURATION = 1000;
@@ -87,7 +88,7 @@ const RE_FLOOD_PEAK_AT = 500;
 const RE_DISSOLVE_DURATION = 500;
 
 export default function GodmodeUnlockAnimation({ show, colorFlood, onComplete, onFloodPeak, variant = "unlock" }: Props) {
-  const [phase, setPhase] = useState<"idle" | "slam" | "pause" | "flood" | "dissolve">("idle");
+  const [phase, setPhase] = useState<"idle" | "intro" | "slam" | "pause" | "flood" | "dissolve">("idle");
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const sparks = useMemo(() => generateSparks(36), []);
   const rings = useMemo(() => generateRings(6), []);
@@ -118,29 +119,33 @@ export default function GodmodeUnlockAnimation({ show, colorFlood, onComplete, o
     }
 
     if (variant === "reentry") {
-      setPhase("slam");
+      setPhase("intro");
 
       schedule(() => {
-        setPhase("pause");
+        setPhase("slam");
 
         schedule(() => {
-          setPhase("flood");
+          setPhase("pause");
 
           schedule(() => {
-            if (!floodPeakFired.current) {
-              floodPeakFired.current = true;
-              onFloodPeakRef.current?.();
-            }
-          }, RE_FLOOD_PEAK_AT);
+            setPhase("flood");
 
-          schedule(() => {
-            setPhase("dissolve");
             schedule(() => {
-              onCompleteRef.current();
-            }, RE_DISSOLVE_DURATION);
-          }, RE_FLOOD_DURATION);
-        }, RE_HOLD_DURATION);
-      }, RE_SLAM_DURATION);
+              if (!floodPeakFired.current) {
+                floodPeakFired.current = true;
+                onFloodPeakRef.current?.();
+              }
+            }, RE_FLOOD_PEAK_AT);
+
+            schedule(() => {
+              setPhase("dissolve");
+              schedule(() => {
+                onCompleteRef.current();
+              }, RE_DISSOLVE_DURATION);
+            }, RE_FLOOD_DURATION);
+          }, RE_HOLD_DURATION);
+        }, RE_SLAM_DURATION);
+      }, RE_INTRO_DURATION);
     } else {
       setPhase("slam");
 
@@ -181,6 +186,7 @@ export default function GodmodeUnlockAnimation({ show, colorFlood, onComplete, o
   if (!show && phase === "idle") return null;
 
   const isReentry = variant === "reentry";
+  const showIntro = isReentry && phase === "intro";
   const showReentryCard = isReentry && (phase === "slam" || phase === "pause" || phase === "flood");
   const showCard = !isReentry && (phase === "slam" || phase === "pause" || phase === "flood");
   const showSparks = !isReentry && phase === "slam";
@@ -189,7 +195,7 @@ export default function GodmodeUnlockAnimation({ show, colorFlood, onComplete, o
 
   return (
     <div
-      className={`gmu-overlay${isReentry ? " gmu-overlay--reentry" : ""}${showFlood ? " gmu-overlay--flooding" : ""}${showDissolve ? " gmu-overlay--dissolve" : ""}`}
+      className={`gmu-overlay${isReentry ? " gmu-overlay--reentry" : ""}${showIntro ? " gmu-overlay--intro" : ""}${showFlood ? " gmu-overlay--flooding" : ""}${showDissolve ? " gmu-overlay--dissolve" : ""}`}
     >
       {/* Cinematic vignette */}
       <div className="gmu-vignette" />

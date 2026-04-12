@@ -73,7 +73,12 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("stumpd_auth_token");var g=localStorage.getItem("stumpdpuzzle_hmChampionTs");var a=t&&g&&Date.now()-Number(g)<864e5;fetch("http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"327401"},body:JSON.stringify({sessionId:"327401",location:"layout-inline-script",message:"godmode-early check",data:{hasToken:!!t,hasTs:!!g,ts:g,active:!!a},timestamp:Date.now(),hypothesisId:"E-inline"})}).catch(function(){});if(a){document.documentElement.classList.add("godmode-early")}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("stumpd_auth_token");var g=localStorage.getItem("stumpdpuzzle_hmChampionTs");if(t&&g&&Date.now()-Number(g)<864e5){document.documentElement.classList.add("godmode-early");document.documentElement.style.backgroundColor="#1a1a2e";document.documentElement.style.colorScheme="dark"}}catch(e){}})();`,
+          }}
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `html.godmode-early,html.godmode-early body{background-color:#1a1a2e!important;color:#e2e8f0!important}`,
           }}
         />
       </head>
