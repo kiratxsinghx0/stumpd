@@ -7077,6 +7077,10 @@ body.body--godmode {
   color: #94a3b8;
 }
 
+.godmode-theme .game-next-timer-inline {
+  margin-top: 10px;
+}
+
 .godmode-theme .next-puzzle-timer-card {
   background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
   border-color: #475569;

@@ -1396,7 +1396,9 @@ export default function Game() {
         <div className={shellVpClass ? `game-shell ${shellVpClass}` : "game-shell"}>
 
         <div className="game-shell__top">
-          <p className="game-subtitle game-subtitle--stumpd">Guess the Cricketer</p>
+          {!useDarkTheme && (
+            <p className="game-subtitle game-subtitle--stumpd">Guess the Cricketer</p>
+          )}
         </div>
 
         {/* Validation only — positioned out of flow so the grid does not jump */}

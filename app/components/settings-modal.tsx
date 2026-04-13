@@ -246,7 +246,7 @@ export default function SettingsModal({
               {showLogoutConfirm && (
                 <div className="settings-logout-confirm">
                   <p className="settings-logout-confirm__text">
-                    Logging out will deactivate Godmode. Your timer will resume when you log back in.
+                    Logging out will deactivate Godmode. Your timer will continue while you're logged out.
                   </p>
                   <div className="settings-logout-confirm__actions">
                     <button
