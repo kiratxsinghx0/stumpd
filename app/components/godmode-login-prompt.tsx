@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { register, login, postHardModeResult } from "../services/auth-api";
+import { register, login } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { readStats, readPerModeBaseline } from "../stumpd/stats-storage";
 import { activateGodmode } from "../utils/godmode-status";
@@ -53,10 +53,7 @@ export default function GodmodeLoginPrompt({
         await register(email, password, gameResultPayload ?? undefined, localStats);
         await activateGodmode();
       } else {
-        await login(email, password, localStats);
-        if (gameResultPayload) {
-          await postHardModeResult(gameResultPayload);
-        }
+        await login(email, password, localStats, gameResultPayload ?? undefined);
         await activateGodmode();
       }
       onAuthSuccess();

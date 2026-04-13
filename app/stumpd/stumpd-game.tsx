@@ -1801,11 +1801,12 @@ export default function Game() {
         canDisableHardMode={guesses.length === 0 || gameOver}
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
-          await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
 
           try { await postAllPendingResults(); } catch { /* non-critical */ }
+          await activateGodmode();
+          await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
 
           // Save game progress for both modes
           if (puzzleData?.day) {
@@ -1842,11 +1843,12 @@ export default function Game() {
           todayRank={todayRank}
           hardMode={hardMode}
           onAuthChange={async () => {
-            await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
             setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
 
             try { await postAllPendingResults(); } catch { /* non-critical */ }
+            await activateGodmode();
+            await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
             setLbInvalidateKey(k => k + 1);
 
             // Save game progress for both modes

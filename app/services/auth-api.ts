@@ -99,13 +99,14 @@ export async function login(
   email: string,
   password: string,
   baselineStats?: BaselineStats,
+  gameResult?: GameResultPayload,
 ): Promise<{ user: AuthUser; token: string }> {
   let res: Response;
   try {
     res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, baselineStats }),
+      body: JSON.stringify({ email, password, baselineStats, gameResult }),
     });
   } catch {
     throw new Error("Network error — please check your connection");
