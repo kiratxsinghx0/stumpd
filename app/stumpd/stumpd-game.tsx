@@ -18,8 +18,8 @@ import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
 import type { GameStats, LiveStats } from "../components/games";
 import { DEFAULT_STUMPD_STATS, readStats, recordGameResult, saveGameToHistory } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
-import { fetchLiveStats, incrementLiveStats } from "../services/live-stats-api";
-import { postGameResult, postHardModeResult, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory } from "../services/auth-api";
+import { fetchLiveStats, incrementLiveStats, incrementGameStart } from "../services/live-stats-api";
+import { postGameResult, postHardModeResult, postAllPendingResults, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { getAccuracyBadge, getGodmodeBadge } from "../utils/accuracy-badge";
 import { xorDecode, ENCODE_KEY } from "../utils/xor-codec";
@@ -1210,6 +1210,9 @@ export default function Game() {
       if (!timerStarted) {
         setTimerStarted(true);
         try { localStorage.setItem(LS_TIMER_STARTED_KEY, "1"); } catch { /* */ }
+        if (puzzleData?.day) {
+          incrementGameStart(puzzleData.day, hardMode || undefined).catch(() => {});
+        }
       }
       setCurrentInput(prev => prev.length < WORD_LENGTH ? prev + key.toLowerCase() : prev);
     }
@@ -1712,8 +1715,26 @@ export default function Game() {
         gameResultPayload={lastGameResult}
         onAuthSuccess={async () => {
           setShowGodmodeLoginPrompt(false);
-          await syncGameHistory();
           await refreshGodmodeState();
+          setAuthVersion(v => v + 1);
+          fetchLiveStats().then(setLiveStats).catch(() => {});
+
+          try { await postAllPendingResults(); } catch { /* non-critical */ }
+
+          // Save game progress for both modes
+          if (puzzleData?.day) {
+            const normalProgress = readCurrentGameProgress(false, puzzleData.day);
+            const hardProgress = readCurrentGameProgress(true, puzzleData.day);
+            if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+            if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+          }
+
+          fetchMyStats().then((server) => {
+            if (!server) return;
+            setStats(server);
+            if (server.todayRank) setTodayRank(server.todayRank);
+          }).catch(() => {});
+          setLbInvalidateKey(k => k + 1);
           setGodmodeColorFlood(true);
           setShowGodmodeUnlock(true);
         }}
@@ -1739,15 +1760,20 @@ export default function Game() {
           await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
-          const local = readStats();
+
+          try { await postAllPendingResults(); } catch { /* non-critical */ }
+
+          // Save game progress for both modes
+          if (puzzleData?.day) {
+            const normalProgress = readCurrentGameProgress(false, puzzleData.day);
+            const hardProgress = readCurrentGameProgress(true, puzzleData.day);
+            if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+            if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+          }
+
           fetchMyStats().then((server) => {
             if (!server) return;
-            setStats({
-              gamesPlayed: Math.max(local.gamesPlayed, server.gamesPlayed),
-              gamesWon: Math.max(local.gamesWon, server.gamesWon),
-              currentStreak: Math.max(local.currentStreak, server.currentStreak),
-              maxStreak: Math.max(local.maxStreak, server.maxStreak),
-            });
+            setStats(server);
             if (server.todayRank) setTodayRank(server.todayRank);
           }).catch(() => {});
           setLbInvalidateKey(k => k + 1);
@@ -1776,28 +1802,20 @@ export default function Game() {
             setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
 
-            if (lastGameResult) {
-              try {
-                if (hardMode) {
-                  await postHardModeResult(lastGameResult);
-                  setLbInvalidateKey(k => k + 1);
-                } else {
-                  const result = await postGameResult(lastGameResult);
-                  if (result?.todayRank) setTodayRank(result.todayRank);
-                  setLbInvalidateKey(k => k + 1);
-                }
-              } catch { /* non-critical */ }
+            try { await postAllPendingResults(); } catch { /* non-critical */ }
+            setLbInvalidateKey(k => k + 1);
+
+            // Save game progress for both modes
+            if (puzzleData?.day) {
+              const normalProgress = readCurrentGameProgress(false, puzzleData.day);
+              const hardProgress = readCurrentGameProgress(true, puzzleData.day);
+              if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+              if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
             }
 
-            const local = readStats();
             fetchMyStats().then((server) => {
               if (!server) return;
-              setStats({
-                gamesPlayed: Math.max(local.gamesPlayed, server.gamesPlayed),
-                gamesWon: Math.max(local.gamesWon, server.gamesWon),
-                currentStreak: Math.max(local.currentStreak, server.currentStreak),
-                maxStreak: Math.max(local.maxStreak, server.maxStreak),
-              });
+              setStats(server);
               if (server.todayRank) setTodayRank(server.todayRank);
             }).catch(() => {});
           }}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isLoggedIn, getStoredUser, clearAuth, login, register, saveGameProgress } from "../services/auth-api";
-import { readStats } from "../stumpd/stats-storage";
+import { readStats, readPerModeBaseline } from "../stumpd/stats-storage";
 import { readCurrentGameProgress } from "../stumpd/progress-helpers";
 import { isGodmodeActive, getGodmodeHoursRemaining } from "../utils/godmode-status";
 
@@ -111,7 +111,7 @@ export default function SettingsModal({
     setError("");
     setLoading(true);
     try {
-      const localStats = readStats();
+      const localStats = { ...readStats(), ...readPerModeBaseline() };
       if (mode === "register") {
         await register(email, password, undefined, localStats);
       } else {
@@ -121,10 +121,6 @@ export default function SettingsModal({
       setUserEmail(getStoredUser()?.email ?? null);
       setEmail("");
       setPassword("");
-      if (puzzleDay) {
-        const progress = readCurrentGameProgress(hardMode, puzzleDay);
-        if (progress) saveGameProgress(progress).catch(() => {});
-      }
       onAuthChange?.();
       onClose();
     } catch (err: unknown) {

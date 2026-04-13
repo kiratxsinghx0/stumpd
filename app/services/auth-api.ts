@@ -59,11 +59,17 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export type BaselineStats = {
+  gamesPlayed?: number; gamesWon?: number; currentStreak?: number; maxStreak?: number;
+  gamesPlayedNormal?: number; gamesWonNormal?: number;
+  gamesPlayedHard?: number; gamesWonHard?: number;
+};
+
 export async function register(
   email: string,
   password: string,
   gameResult?: GameResultPayload,
-  baselineStats?: { gamesPlayed: number; gamesWon: number; currentStreak: number; maxStreak: number },
+  baselineStats?: BaselineStats,
 ): Promise<{ user: AuthUser; token: string }> {
   let res: Response;
   try {
@@ -85,14 +91,14 @@ export async function register(
   const data = json.data as { token: string; user: AuthUser; godmode_activated_at?: number | null; hard_mode_pref?: boolean };
   storeAuth(data.token, data.user);
   applyServerPrefs(data);
-  syncGameHistory().catch(() => {});
+  await syncGameHistory();
   return data;
 }
 
 export async function login(
   email: string,
   password: string,
-  baselineStats?: { gamesPlayed: number; gamesWon: number; currentStreak: number; maxStreak: number },
+  baselineStats?: BaselineStats,
 ): Promise<{ user: AuthUser; token: string }> {
   let res: Response;
   try {
@@ -114,7 +120,7 @@ export async function login(
   const data = json.data as { token: string; user: AuthUser; godmode_activated_at?: number | null; hard_mode_pref?: boolean };
   storeAuth(data.token, data.user);
   applyServerPrefs(data);
-  syncGameHistory().catch(() => {});
+  await syncGameHistory();
   return data;
 }
 
@@ -136,6 +142,31 @@ export async function syncGameHistory(): Promise<void> {
     if (hardResults.length > 0) {
       promises.push(fetch("/api/user/hard-mode/sync-results", { method: "POST", headers, body: JSON.stringify({ results: hardResults }) }));
     }
+    await Promise.all(promises);
+  } catch {
+    /* non-critical */
+  }
+}
+
+/**
+ * Post all pending game results from localStorage history for both modes.
+ * Unlike syncGameHistory (which bulk-syncs), this explicitly posts each
+ * mode's latest result so leaderboard caches are updated.
+ */
+export async function postAllPendingResults(): Promise<void> {
+  const token = getStoredToken();
+  if (!token) return;
+  try {
+    const { readGameHistory } = await import("../stumpd/stats-storage");
+    const results = readGameHistory();
+    if (results.length === 0) return;
+
+    const latestNormal = [...results].filter((r) => !r.hard_mode).pop();
+    const latestHard = [...results].filter((r) => r.hard_mode).pop();
+
+    const promises: Promise<unknown>[] = [];
+    if (latestNormal) promises.push(postGameResult(latestNormal));
+    if (latestHard) promises.push(postHardModeResult(latestHard));
     await Promise.all(promises);
   } catch {
     /* non-critical */

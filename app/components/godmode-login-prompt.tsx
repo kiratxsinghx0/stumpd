@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { register, login, postHardModeResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
-import { readStats } from "../stumpd/stats-storage";
+import { readStats, readPerModeBaseline } from "../stumpd/stats-storage";
 import { activateGodmode } from "../utils/godmode-status";
 
 type Props = {
@@ -48,7 +48,7 @@ export default function GodmodeLoginPrompt({
     setError("");
     setLoading(true);
     try {
-      const localStats = readStats();
+      const localStats = { ...readStats(), ...readPerModeBaseline() };
       if (mode === "register") {
         await register(email, password, gameResultPayload ?? undefined, localStats);
         await activateGodmode();

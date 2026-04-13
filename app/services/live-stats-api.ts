@@ -53,3 +53,32 @@ export async function incrementLiveStats(
     /* silent */
   }
 }
+
+const LS_GAME_START_PREFIX = "stumpd_live_start_";
+
+export async function incrementGameStart(
+  puzzleDay: number,
+  hardMode?: boolean,
+): Promise<void> {
+  try {
+    const suffix = hardMode ? "hard" : "normal";
+    const key = `${LS_GAME_START_PREFIX}${suffix}_${puzzleDay}`;
+    if (typeof window !== "undefined" && localStorage.getItem(key)) return;
+
+    const endpoint = hardMode
+      ? "/api/live-stats/hard-mode/game-start"
+      : "/api/live-stats/game-start";
+
+    await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ puzzle_day: puzzleDay }),
+    });
+
+    if (typeof window !== "undefined") {
+      try { localStorage.setItem(key, "1"); } catch { /* */ }
+    }
+  } catch {
+    /* silent */
+  }
+}
