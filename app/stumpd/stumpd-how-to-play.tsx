@@ -132,23 +132,23 @@ export default function StumpdHowToPlay() {
           <div className="htp__hint-step">
             <span className="htp__hint-badge">Guess 1</span>
             <span className="htp__hint-icon" aria-hidden>
-              🏏
+              🎯
             </span>
-            <span className="htp__hint-label">IPL Team &amp; Nationality</span>
+            <span className="htp__hint-label">Playing role</span>
           </div>
           <div className="htp__hint-step">
             <span className="htp__hint-badge">Guess 2</span>
             <span className="htp__hint-icon" aria-hidden>
               💡
             </span>
-            <span className="htp__hint-label">Trivia clue</span>
+            <span className="htp__hint-label">Hint</span>
           </div>
           <div className="htp__hint-step">
             <span className="htp__hint-badge">Guess 3</span>
             <span className="htp__hint-icon" aria-hidden>
-              🎯
+              🏏
             </span>
-            <span className="htp__hint-label">Playing role</span>
+            <span className="htp__hint-label">IPL Team &amp; Nationality</span>
           </div>
         </div>
       </section>

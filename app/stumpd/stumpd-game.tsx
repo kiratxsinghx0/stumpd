@@ -34,7 +34,7 @@ function findHint<T = string>(hints: PuzzleHintEntry[], key: string): T | undefi
   return entry ? (entry[key] as T) : undefined;
 }
 
-function collectTrivias(hints: PuzzleHintEntry[]): string[] {
+function collectHintTexts(hints: PuzzleHintEntry[]): string[] {
   const entry = hints.find((h) => h.trivia !== undefined);
   if (!entry) return [];
   const val = entry.trivia;
@@ -46,11 +46,11 @@ export type PlayerNameMeta = { shortened: true; fullName: string };
 
 /** Fixed hint ladder: one hint auto-revealed per wrong guess in this order. */
 const HINT_LADDER: { key: string; label: string }[] = [
-  { key: "iplTeam+country", label: "IPL Team & Nationality" },
-  { key: "trivia",          label: "Trivia" },
-  { key: "trivia",          label: "Trivia" },
   { key: "role",            label: "Role" },
-  { key: "trivia",          label: "Trivia" },
+  { key: "hint",            label: "Hint" },
+  { key: "iplTeam+country", label: "IPL Team & Nationality" },
+  { key: "hint",            label: "Hint" },
+  { key: "hint",            label: "Hint" },
 ];
 
 const LS_HOW_TO_PLAY_DISMISSED = "stumpdpuzzle_howToPlayDismissed";
@@ -346,7 +346,6 @@ function writeRemoteToLocalStorage(
   hardMode: boolean,
   setElapsed?: (v: number) => void,
   elapsedRef?: React.MutableRefObject<number>,
-  setTrivia?: (v: number[]) => void,
 ) {
   const guessKey = hardMode ? LS_HARD_GUESS_KEY : LS_GUESS_KEY;
   const puzzleIdKey = hardMode ? LS_HARD_PUZZLE_ID_KEY : LS_PUZZLE_ID_KEY;
@@ -362,10 +361,6 @@ function writeRemoteToLocalStorage(
   }
   if (!hardMode && remote.hints_used != null && remote.hints_used > 0) {
     localStorage.setItem(LS_UNLOCKED_HINTS_KEY, JSON.stringify(Array(remote.hints_used).fill({})));
-  }
-  if (!hardMode && remote.used_trivia_json) {
-    localStorage.setItem(LS_USED_TRIVIA_KEY, remote.used_trivia_json);
-    try { if (setTrivia) setTrivia(JSON.parse(remote.used_trivia_json)); } catch { /* */ }
   }
 }
 
@@ -563,11 +558,8 @@ export default function Game() {
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
   const [shareDismissed, setShareDismissed] = useState(false);
-  /** Cookie accepted + how to play seen — enables initial trivia before first guess (client-read). */
+  /** Cookie accepted + how to play seen — enables initial hint before first guess (client-read). */
   const [returningUserHints, setReturningUserHints] = useState(false);
-  const [usedTriviaIndices, setUsedTriviaIndices] = useState<number[]>([]);
-  const usedTriviaIndicesRef = useRef(usedTriviaIndices);
-  usedTriviaIndicesRef.current = usedTriviaIndices;
   const [stats, setStats] = useState<GameStats>(DEFAULT_STUMPD_STATS);
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [lastGameResult, setLastGameResult] = useState<GameResultPayload | null>(null);
@@ -701,7 +693,7 @@ export default function Game() {
     setReturningUserHints(readReturningUserHintEligible());
   }, []);
 
-  /** Mark how-to-play seen on cookie accept so returning-user trivia hint works. */
+  /** Mark how-to-play seen on cookie accept so returning-user hint works. */
   useEffect(() => {
     if (typeof window === "undefined") return;
     let htpTimer: ReturnType<typeof setTimeout> | null = null;
@@ -798,20 +790,16 @@ export default function Game() {
 
   const openingHintText = String(findHint(playerHints, "openingHint") ?? "");
 
-  /**
-   * Resolve a single ladder tier's text. For trivia slots, use the stored random
-   * index so refreshing the page gives the same trivia.
-   */
-  const resolveHintTier = useCallback((tier: number, storedTrivia: number[]): { label: string; text: string } => {
+  /** Resolve a single ladder tier's display text. Hint slots use sequential indices. */
+  const resolveHintTier = useCallback((tier: number): { label: string; text: string } => {
     const { key, label } = HINT_LADDER[Math.min(tier, HINT_LADDER.length - 1)];
-    if (key === "trivia") {
-      const trivias = collectTrivias(playerHints);
-      let triviaSlotIdx = 0;
+    if (key === "hint") {
+      const hints = collectHintTexts(playerHints);
+      let hintSlotIdx = 0;
       for (let t = 0; t < tier; t++) {
-        if (HINT_LADDER[t]?.key === "trivia") triviaSlotIdx++;
+        if (HINT_LADDER[t]?.key === "hint") hintSlotIdx++;
       }
-      const idx = storedTrivia[triviaSlotIdx];
-      return { label, text: idx != null && trivias[idx] ? trivias[idx] : "" };
+      return { label, text: hintSlotIdx < hints.length ? hints[hintSlotIdx] : "" };
     }
     if (key === "iplTeam+country") {
       const team = findHint(playerHints, "iplTeam") ?? "";
@@ -826,41 +814,12 @@ export default function Game() {
     return { label, text: val != null ? String(val) : "" };
   }, [playerHints]);
 
-  /** Pick a random trivia index (not yet used) and persist it. */
-  const pickAndStoreTriviaIndex = useCallback((currentUsed: number[]): number[] => {
-    const trivias = collectTrivias(playerHints);
-    const available = trivias.map((_, i) => i).filter(i => !currentUsed.includes(i));
-    if (available.length === 0) return currentUsed;
-    const randomIdx = available[Math.floor(Math.random() * available.length)];
-    const next = [...currentUsed, randomIdx];
-    setUsedTriviaIndices(next);
-    try { localStorage.setItem(LS_USED_TRIVIA_KEY, JSON.stringify(next)); } catch { /* */ }
-    return next;
-  }, [playerHints]);
-
-  /** Auto-pick trivia indices when wrongGuessCount grows into a trivia tier. */
-  useEffect(() => {
-    if (wrongGuessCount === 0) return;
-    let needed = 0;
-    for (let t = 0; t < Math.min(wrongGuessCount, HINT_LADDER.length); t++) {
-      if (HINT_LADDER[t].key === "trivia") needed++;
-    }
-    if (needed <= usedTriviaIndicesRef.current.length) return;
-    let current = [...usedTriviaIndicesRef.current];
-    while (current.length < needed) {
-      const next = pickAndStoreTriviaIndex(current);
-      if (next.length === current.length) break;
-      current = next;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wrongGuessCount]);
-
   const allUnlockedHints: { label: string; text: string }[] = hardMode
     ? []
     : [{ label: "Opening Clue", text: openingHintText }];
   if (!hardMode) {
     for (let i = 1; i <= wrongGuessCount; i++) {
-      allUnlockedHints.push(resolveHintTier(i - 1, usedTriviaIndices));
+      allUnlockedHints.push(resolveHintTier(i - 1));
     }
   }
   const allUnlockedHintsRef = useRef(allUnlockedHints);
@@ -925,7 +884,6 @@ export default function Game() {
     setShowModal(false);
     setTimerStarted(false);
     setElapsedSeconds(0);
-    setUsedTriviaIndices([]);
 
     try {
       const timerKey = isHardRestore ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
@@ -936,8 +894,6 @@ export default function Game() {
         elapsedSecondsRef.current = val;
       }
       if (localStorage.getItem(LS_TIMER_STARTED_KEY) === "1") setTimerStarted(true);
-      const savedTrivia = localStorage.getItem(LS_USED_TRIVIA_KEY);
-      if (savedTrivia) setUsedTriviaIndices(JSON.parse(savedTrivia));
       setHardMode(isHardRestore);
     } catch { /* */ }
 
@@ -990,7 +946,7 @@ export default function Game() {
 
       // DB is finished → DB always wins
       if (dbCompleted) {
-        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setUsedTriviaIndices); } catch { /* */ }
+        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef); } catch { /* */ }
         if (dbParsed) applyLoaded(dbParsed, isHardRestore);
         return;
       }
@@ -1007,7 +963,7 @@ export default function Game() {
         applyLoaded(local, isHardRestore);
         if (localGuessCount > dbGuessCount) pushLocalToDb();
       } else if (dbParsed) {
-        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setUsedTriviaIndices); } catch { /* */ }
+        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef); } catch { /* */ }
         applyLoaded(dbParsed, isHardRestore);
       }
     }).catch(() => {
