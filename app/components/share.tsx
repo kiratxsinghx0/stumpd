@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { GameStats, LiveStats } from "./games";
 import ReminderPrompt from "./reminder-prompt";
-import { register, login, isLoggedIn, postGameResult } from "../services/auth-api";
+import { register, login, isLoggedIn, postGameResult, postHardModeResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { readStats, readPerModeBaseline } from "../stumpd/stats-storage";
 import { getAccuracyBadge, getGodmodeBadge } from "../utils/accuracy-badge";
@@ -11,6 +11,7 @@ import { SITE_URL } from "../../lib/site";
 import { fetchTodayLeaderboard } from "../services/leaderboard-api";
 import type { TodayEntry } from "../services/leaderboard-api";
 import { dispatchOpenLeaderboard } from "./leaderboard-open";
+import { activateGodmode } from "../utils/godmode-status";
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -404,8 +405,13 @@ function SignupPrompt({
       const localStats = { ...readStats(), ...readPerModeBaseline() };
       if (mode === "register") {
         await register(email, password, gameResultPayload ?? undefined, localStats);
+        await activateGodmode();
       } else {
         await login(email, password, localStats);
+        if (gameResultPayload) {
+          await postHardModeResult(gameResultPayload);
+        }
+        await activateGodmode();
       }
       setDone(true);
       onAuthChange?.();
