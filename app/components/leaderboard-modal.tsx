@@ -395,7 +395,7 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, hardModePuz
     if (tab === "today" && shouldPrefetch(entry)) {
       fetchTab.current?.(tab, true);
     }
-  }, [open, tab, puzzleDay, invalidateKey, godmodeView]);
+  }, [open, tab, puzzleDay, invalidateKey, godmodeView, hardModePuzzleDay]);
 
   useEffect(() => {
     if (!open || tab !== "today") return;

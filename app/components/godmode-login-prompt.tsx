@@ -51,6 +51,7 @@ export default function GodmodeLoginPrompt({
       const localStats = readStats();
       if (mode === "register") {
         await register(email, password, gameResultPayload ?? undefined, localStats);
+        await activateGodmode();
       } else {
         await login(email, password, localStats);
         if (gameResultPayload) {

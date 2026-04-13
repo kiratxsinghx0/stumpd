@@ -118,6 +118,8 @@ export default function GodmodeUnlockAnimation({ show, colorFlood, onComplete, o
       return;
     }
 
+    floodPeakFired.current = false;
+
     if (variant === "reentry") {
       setPhase("intro");
 

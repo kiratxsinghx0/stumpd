@@ -19,7 +19,7 @@ import type { GameStats, LiveStats } from "../components/games";
 import { DEFAULT_STUMPD_STATS, readStats, recordGameResult, saveGameToHistory } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
 import { fetchLiveStats, incrementLiveStats } from "../services/live-stats-api";
-import { postGameResult, postHardModeResult, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser } from "../services/auth-api";
+import { postGameResult, postHardModeResult, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { getAccuracyBadge, getGodmodeBadge } from "../utils/accuracy-badge";
 import { xorDecode, ENCODE_KEY } from "../utils/xor-codec";
@@ -55,18 +55,6 @@ const HINT_LADDER: { key: string; label: string }[] = [
 
 const LS_HOW_TO_PLAY_DISMISSED = "stumpdpuzzle_howToPlayDismissed";
 const LS_HOW_TO_PLAY_SEEN = "stumpdpuzzle_howToPlaySeen";
-
-function readReturningUserHintEligible(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    if (localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY) !== "accepted") return false;
-    if (localStorage.getItem(LS_HOW_TO_PLAY_SEEN) === "true") return true;
-    if (localStorage.getItem(LS_HOW_TO_PLAY_DISMISSED) === "1") return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
 
 type IplHintEntry = PuzzleHintEntry;
 
@@ -346,6 +334,7 @@ function writeRemoteToLocalStorage(
   hardMode: boolean,
   setElapsed?: (v: number) => void,
   elapsedRef?: React.MutableRefObject<number>,
+  setTimerStartedCb?: (v: boolean) => void,
 ) {
   const guessKey = hardMode ? LS_HARD_GUESS_KEY : LS_GUESS_KEY;
   const puzzleIdKey = hardMode ? LS_HARD_PUZZLE_ID_KEY : LS_PUZZLE_ID_KEY;
@@ -354,8 +343,12 @@ function writeRemoteToLocalStorage(
   localStorage.setItem(LS_USER_HAS_PLAYED_KEY, LS_USER_HAS_PLAYED_VALUE);
   if (remote.guesses_json) localStorage.setItem(guessKey, remote.guesses_json);
   if (remote.completed) localStorage.setItem(puzzleIdKey, puzzleId);
-  if (remote.elapsed_seconds) {
+  if (remote.elapsed_seconds != null) {
     localStorage.setItem(timerKey, String(remote.elapsed_seconds));
+    if (!remote.completed) {
+      localStorage.setItem(LS_TIMER_STARTED_KEY, "1");
+      if (setTimerStartedCb) setTimerStartedCb(true);
+    }
     if (setElapsed) setElapsed(remote.elapsed_seconds);
     if (elapsedRef) elapsedRef.current = remote.elapsed_seconds;
   }
@@ -558,8 +551,6 @@ export default function Game() {
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
   const [shareDismissed, setShareDismissed] = useState(false);
-  /** Cookie accepted + how to play seen — enables initial hint before first guess (client-read). */
-  const [returningUserHints, setReturningUserHints] = useState(false);
   const [stats, setStats] = useState<GameStats>(DEFAULT_STUMPD_STATS);
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [lastGameResult, setLastGameResult] = useState<GameResultPayload | null>(null);
@@ -613,12 +604,8 @@ export default function Game() {
   currentGameIdRef.current = puzzleData ? String(puzzleData.day) : "";
   puzzleAnswerFullNameRef.current = puzzleData?.fullName ?? null;
   hardModeRef.current = hardMode;
-  const nameNotice =
-    targetPlayer?.meta?.shortened === true && targetPlayer.meta.fullName
-      ? targetPlayer.meta.fullName
-      : null;
 
-  const refreshGodmodeState = useCallback(async (opts?: { triggerReentry?: boolean }) => {
+  const refreshGodmodeState = useCallback(async (opts?: { triggerReentry?: boolean; reentry?: boolean }) => {
     const cachedActive = isGodmodeActive();
     const user = getStoredUser();
     setUserInitial(user?.email ? user.email.charAt(0).toUpperCase() : "");
@@ -634,7 +621,7 @@ export default function Game() {
     setGodmodeHoursLeft(hoursLeft);
 
     if (opts?.triggerReentry && active) {
-      setGodmodeReentry(true);
+      setGodmodeReentry(opts.reentry ?? true);
       setGodmodeColorFlood(true);
       setShowGodmodeUnlock(true);
     } else {
@@ -651,12 +638,14 @@ export default function Game() {
       document.body.classList.add("body--godmode");
     } else if (!godmodeActive) {
       document.body.classList.remove("body--godmode");
+      document.documentElement.classList.remove("godmode-early");
+      document.documentElement.style.removeProperty("background-color");
+      document.documentElement.style.removeProperty("color-scheme");
     }
     return () => { document.body.classList.remove("body--godmode"); };
   }, [godmodeActive, showGodmodeUnlock]);
 
   useEffect(() => {
-    setReturningUserHints(readReturningUserHintEligible());
     setStats(readStats());
 
     let consentDone = false;
@@ -690,7 +679,6 @@ export default function Game() {
     }
     setShowHowToPlay(false);
     setHowToPlayDone(true);
-    setReturningUserHints(readReturningUserHintEligible());
   }, []);
 
   /** Mark how-to-play seen on cookie accept so returning-user hint works. */
@@ -719,7 +707,6 @@ export default function Game() {
       }
       if (detail !== "accepted") return;
       try { localStorage.setItem(LS_HOW_TO_PLAY_SEEN, "true"); } catch { /* */ }
-      setReturningUserHints(readReturningUserHintEligible());
     };
     window.addEventListener("cookie-consent", onCookieConsent);
     return () => {
@@ -944,10 +931,17 @@ export default function Game() {
       const dbGuessCount = dbParsed?.guesses.length ?? 0;
       const localGuessCount = local?.guesses.length ?? 0;
 
-      // DB is finished → DB always wins
+      // DB is finished → DB wins if parseable, otherwise fall through to localStorage
       if (dbCompleted) {
-        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef); } catch { /* */ }
-        if (dbParsed) applyLoaded(dbParsed, isHardRestore);
+        if (dbParsed) {
+          try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setTimerStarted); } catch { /* */ }
+          applyLoaded(dbParsed, isHardRestore);
+          return;
+        }
+        if (local) {
+          applyLoaded(local, isHardRestore);
+          pushLocalToDb();
+        }
         return;
       }
 
@@ -963,7 +957,7 @@ export default function Game() {
         applyLoaded(local, isHardRestore);
         if (localGuessCount > dbGuessCount) pushLocalToDb();
       } else if (dbParsed) {
-        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef); } catch { /* */ }
+        try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setTimerStarted); } catch { /* */ }
         applyLoaded(dbParsed, isHardRestore);
       }
     }).catch(() => {
@@ -1073,13 +1067,9 @@ export default function Game() {
         setCurrentFlipCol(-1);
         setDoneFlipCols(new Set());
 
-        // #region agent log
-        fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a96fb2'},body:JSON.stringify({sessionId:'a96fb2',location:'stumpd-game.tsx:flip-complete',message:'flip animation completed',data:{guess,justWon,completedRowIndex,isHard,loggedIn:isLoggedIn()},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-
         const justLost = !justWon && completedRowIndex + 1 === MAX_GUESSES;
         if (justWon || justLost) {
-          setStats(recordGameResult(justWon, gameId));
+          setStats(recordGameResult(justWon, gameId, isHard));
 
           const payload: GameResultPayload = {
             puzzle_day: Number(gameId),
@@ -1095,8 +1085,19 @@ export default function Game() {
           incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses, isHard || undefined).catch(() => {});
           if (isLoggedIn()) {
             if (isHard) {
-              postHardModeResult(payload).catch(() => {});
-              setLbInvalidateKey(k => k + 1);
+              postHardModeResult(payload).then(() => {
+                setLbInvalidateKey(k => k + 1);
+                if (justWon) {
+                  setGodmodeColorFlood(true);
+                  setShowGodmodeUnlock(true);
+                }
+              }).catch(() => {
+                setLbInvalidateKey(k => k + 1);
+                if (justWon) {
+                  setGodmodeColorFlood(true);
+                  setShowGodmodeUnlock(true);
+                }
+              });
             } else {
               postGameResult(payload).then((result) => {
                 if (result?.todayRank) setTodayRank(result.todayRank);
@@ -1105,13 +1106,7 @@ export default function Game() {
             }
           }
 
-          if (isHard && justWon) {
-            // #region agent log
-            fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a96fb2'},body:JSON.stringify({sessionId:'a96fb2',location:'stumpd-game.tsx:hardmode-win-branch',message:'hard mode win detected',data:{isHard,justWon,loggedIn:isLoggedIn()},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            if (isLoggedIn()) {
-              setGodmodeColorFlood(true);
-            }
+          if (isHard && justWon && !isLoggedIn()) {
             setShowGodmodeUnlock(true);
           }
         }
@@ -1178,9 +1173,6 @@ export default function Game() {
   }, [showModal]);
 
   const handleKey = useCallback((key: string) => {
-    // #region agent log
-    if (key === "Enter" || key.length === 1) { fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a96fb2'},body:JSON.stringify({sessionId:'a96fb2',location:'stumpd-game.tsx:handleKey',message:'handleKey called',data:{key,inputLocked,isAnimating,gameOver,guessCount:guesses.length,flippingRow:flippingRow!==null,puzzleDataExists:!!puzzleData,targetPlayerExists:!!targetPlayer,showModal,showSettings,showHowToPlay,showHintHistory,showLeaderboard},timestamp:Date.now(),hypothesisId:'A-B-C-D'})}).catch(()=>{}); }
-    // #endregion
     if (inputLocked || isAnimating || gameOver) return;
 
     if (key === "Enter") {
@@ -1221,7 +1213,7 @@ export default function Game() {
       }
       setCurrentInput(prev => prev.length < WORD_LENGTH ? prev + key.toLowerCase() : prev);
     }
-  }, [currentInput, guesses, isAnimating, gameOver, timerStarted, inputLocked, answer, validGuesses, playerList, puzzleAnswerFullName]);
+  }, [currentInput, guesses, isAnimating, gameOver, timerStarted, inputLocked, answer, validGuesses, playerList, puzzleAnswerFullName, hardMode]);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -1245,7 +1237,7 @@ export default function Game() {
         setPuzzleError(true);
         setRetrying(false);
       });
-  }, []);
+  }, [hardMode]);
 
   if ((puzzleError || retrying) && !puzzleData) {
     const ghostColors = [
@@ -1566,9 +1558,6 @@ export default function Game() {
         </div>
       </div>
 
-      {/* #region agent log */}
-      {guesses.length >= 2 && (() => { fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a96fb2'},body:JSON.stringify({sessionId:'a96fb2',location:'stumpd-game.tsx:render-keyboard-decision',message:'render branch at 2+ guesses',data:{gameOver,isAnimating,won,lost,guessCount:guesses.length,showsKeyboard:!(gameOver&&!isAnimating)},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{}); return null; })()}
-      {/* #endregion */}
       {allAnimationsComplete ? (
         <div className="game-page__see-results">
           <div className={`game-result-notice${won ? " game-result-notice--won" : " game-result-notice--lost"}`} role="status">
@@ -1723,6 +1712,7 @@ export default function Game() {
         gameResultPayload={lastGameResult}
         onAuthSuccess={async () => {
           setShowGodmodeLoginPrompt(false);
+          await syncGameHistory();
           await refreshGodmodeState();
           setGodmodeColorFlood(true);
           setShowGodmodeUnlock(true);
@@ -1746,7 +1736,7 @@ export default function Game() {
         canDisableHardMode={guesses.length === 0 || gameOver}
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
-          await refreshGodmodeState({ triggerReentry: isLoggedIn() });
+          await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
           const local = readStats();
@@ -1782,7 +1772,7 @@ export default function Game() {
           todayRank={todayRank}
           hardMode={hardMode}
           onAuthChange={async () => {
-            await refreshGodmodeState({ triggerReentry: isLoggedIn() });
+            await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
             setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
 

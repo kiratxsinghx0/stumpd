@@ -58,11 +58,12 @@ export function saveGameToHistory(result: GameResultPayload): void {
 }
 
 /** Updates played / wins / streaks once per puzzle `gameId` and persists to localStorage. */
-export function recordGameResult(won: boolean, gameId: string): GameStats {
+export function recordGameResult(won: boolean, gameId: string, hardMode?: boolean): GameStats {
   const prev = readStats();
+  const modeKey = `${gameId}_${hardMode ? "hard" : "normal"}`;
   const alreadyRecorded =
     typeof window !== "undefined" &&
-    localStorage.getItem(LS_STATS_RECORDED_KEY) === gameId;
+    localStorage.getItem(LS_STATS_RECORDED_KEY) === modeKey;
   if (alreadyRecorded) return prev;
 
   const next: GameStats = {
@@ -75,7 +76,7 @@ export function recordGameResult(won: boolean, gameId: string): GameStats {
   };
   persistStats(next);
   try {
-    localStorage.setItem(LS_STATS_RECORDED_KEY, gameId);
+    localStorage.setItem(LS_STATS_RECORDED_KEY, modeKey);
   } catch {
     /* */
   }

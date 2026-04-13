@@ -156,6 +156,9 @@ export default function SettingsModal({
       }
     }
     clearAuth();
+    document.documentElement.classList.remove("godmode-early");
+    document.documentElement.style.removeProperty("background-color");
+    document.documentElement.style.removeProperty("color-scheme");
     setLoggedIn(false);
     setUserEmail(null);
     setShowLogoutConfirm(false);
