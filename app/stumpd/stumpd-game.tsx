@@ -6,6 +6,7 @@ import GuessHistoryModal from "../components/guess-history-modal";
 import StumpdHowToPlay from "./stumpd-how-to-play";
 import PageHeader, { OPEN_HOW_TO_PLAY_EVENT, OPEN_HINT_HISTORY_EVENT, OPEN_LEADERBOARD_EVENT, dispatchLeaderboardState } from "../components/page-header";
 import LeaderboardModal from "../components/leaderboard-modal";
+import WeeklyTopPlayersNotice from "../components/weekly-top-players-notice";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
 import { getInitialPlayerList, fetchIplPlayersFromAPI, loadFallbackPlayers } from "./ipl-players";
@@ -48,6 +49,27 @@ const HINT_LADDER: { key: string; label: string }[] = [
 
 const LS_HOW_TO_PLAY_DISMISSED = "stumpdpuzzle_howToPlayDismissed";
 const LS_HOW_TO_PLAY_SEEN = "stumpdpuzzle_howToPlaySeen";
+const LS_WEEKLY_NOTICE_SEEN = "stumpdpuzzle_weeklyNoticeSeen";
+
+function shouldShowWeeklyNotice(): boolean {
+  try {
+    const lastSeen = localStorage.getItem(LS_WEEKLY_NOTICE_SEEN);
+    if (!lastSeen) return true;
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    return new Date(lastSeen) < monday;
+  } catch {
+    return false;
+  }
+}
+
+function markWeeklyNoticeSeen(): void {
+  try {
+    localStorage.setItem(LS_WEEKLY_NOTICE_SEEN, new Date().toISOString());
+  } catch { /* */ }
+}
 
 function readReturningUserHintEligible(): boolean {
   if (typeof window === "undefined") return false;
@@ -440,6 +462,7 @@ export default function Game() {
   const [showHowToPlay, setShowHowToPlay]  = useState(false);
   const [showHintHistory, setShowHintHistory] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showWeeklyNotice, setShowWeeklyNotice] = useState(false);
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [shareDismissed, setShareDismissed] = useState(false);
   /** Cookie accepted + how to play seen — enables initial trivia before first guess (client-read). */
@@ -478,7 +501,7 @@ export default function Game() {
     [playerList, playerToGuess, puzzleAnswerFullName]
   );
 
-  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showModal;
+  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showModal || showWeeklyNotice;
 
   const answer = targetPlayer?.name.toLowerCase() ?? "";
   const nameNotice =
@@ -503,7 +526,12 @@ export default function Game() {
 
     try {
       if (rejected || localStorage.getItem(LS_HOW_TO_PLAY_DISMISSED) === "1") {
-        setHowToPlayDone(true);
+        if (!rejected && shouldShowWeeklyNotice()) {
+          markWeeklyNoticeSeen();
+          setTimeout(() => setShowWeeklyNotice(true), 300);
+        } else {
+          setHowToPlayDone(true);
+        }
       } else if (consentDone) {
         setShowHowToPlay(true);
       }
@@ -520,8 +548,20 @@ export default function Game() {
       /* quota / private mode */
     }
     setShowHowToPlay(false);
-    setHowToPlayDone(true);
+
+    if (shouldShowWeeklyNotice()) {
+      markWeeklyNoticeSeen();
+      setShowWeeklyNotice(true);
+    } else {
+      setHowToPlayDone(true);
+    }
+
     setReturningUserHints(readReturningUserHintEligible());
+  }, []);
+
+  const dismissWeeklyNotice = useCallback(() => {
+    setShowWeeklyNotice(false);
+    setHowToPlayDone(true);
   }, []);
 
   /** Mark how-to-play seen on cookie accept so returning-user trivia hint works. */
@@ -1410,6 +1450,11 @@ export default function Game() {
       <HowToPlayModal open={showHowToPlay} onClose={dismissHowToPlay}>
         <StumpdHowToPlay />
       </HowToPlayModal>
+
+      <WeeklyTopPlayersNotice
+        open={showWeeklyNotice}
+        onClose={dismissWeeklyNotice}
+      />
 
       <LeaderboardModal
         open={showLeaderboard}
