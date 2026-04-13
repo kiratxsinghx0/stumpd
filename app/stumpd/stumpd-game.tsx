@@ -9,6 +9,7 @@ import LeaderboardModal from "../components/leaderboard-modal";
 import SettingsModal from "../components/settings-modal";
 import type { ToggleOrigin } from "../components/settings-modal";
 import HardModeTransition from "../components/hard-mode-transition";
+import WeeklyTopPlayersNotice from "../components/weekly-top-players-notice";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
 import { getInitialPlayerList, fetchIplPlayersFromAPI, loadFallbackPlayers } from "./ipl-players";
@@ -55,6 +56,27 @@ const HINT_LADDER: { key: string; label: string }[] = [
 
 const LS_HOW_TO_PLAY_DISMISSED = "stumpdpuzzle_howToPlayDismissed";
 const LS_HOW_TO_PLAY_SEEN = "stumpdpuzzle_howToPlaySeen";
+const LS_WEEKLY_NOTICE_SEEN = "stumpdpuzzle_weeklyNoticeSeen";
+
+function shouldShowWeeklyNotice(): boolean {
+  try {
+    const lastSeen = localStorage.getItem(LS_WEEKLY_NOTICE_SEEN);
+    if (!lastSeen) return true;
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    return new Date(lastSeen) < monday;
+  } catch {
+    return false;
+  }
+}
+
+function markWeeklyNoticeSeen(): void {
+  try {
+    localStorage.setItem(LS_WEEKLY_NOTICE_SEEN, new Date().toISOString());
+  } catch { /* */ }
+}
 
 type IplHintEntry = PuzzleHintEntry;
 
@@ -548,6 +570,7 @@ export default function Game() {
   const [showSettings, setShowSettings] = useState(false);
   const [hmTransition, setHmTransition] = useState(false);
   const [hmTransOrigin, setHmTransOrigin] = useState<ToggleOrigin>({ x: 0, y: 0 });
+  const [showWeeklyNotice, setShowWeeklyNotice] = useState(false);
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
   const [shareDismissed, setShareDismissed] = useState(false);
@@ -597,7 +620,7 @@ export default function Game() {
     [playerList, playerToGuess, puzzleAnswerFullName]
   );
 
-  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showSettings || showModal;
+  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showSettings || showModal || showWeeklyNotice;
 
   const answer = targetPlayer?.name.toLowerCase() ?? "";
   answerRef.current = answer;
@@ -661,7 +684,12 @@ export default function Game() {
 
     try {
       if (rejected || localStorage.getItem(LS_HOW_TO_PLAY_DISMISSED) === "1") {
-        setHowToPlayDone(true);
+        if (!rejected && shouldShowWeeklyNotice()) {
+          markWeeklyNoticeSeen();
+          setTimeout(() => setShowWeeklyNotice(true), 300);
+        } else {
+          setHowToPlayDone(true);
+        }
       } else if (consentDone) {
         setShowHowToPlay(true);
       }
@@ -678,6 +706,17 @@ export default function Game() {
       /* quota / private mode */
     }
     setShowHowToPlay(false);
+
+    if (shouldShowWeeklyNotice()) {
+      markWeeklyNoticeSeen();
+      setShowWeeklyNotice(true);
+    } else {
+      setHowToPlayDone(true);
+    }
+  }, []);
+
+  const dismissWeeklyNotice = useCallback(() => {
+    setShowWeeklyNotice(false);
     setHowToPlayDone(true);
   }, []);
 
@@ -1667,6 +1706,11 @@ export default function Game() {
       <HowToPlayModal open={showHowToPlay} onClose={dismissHowToPlay}>
         <StumpdHowToPlay />
       </HowToPlayModal>
+
+      <WeeklyTopPlayersNotice
+        open={showWeeklyNotice}
+        onClose={dismissWeeklyNotice}
+      />
 
       <LeaderboardModal
         open={showLeaderboard}
