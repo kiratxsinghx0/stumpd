@@ -180,6 +180,21 @@ export default function LeftSidebar({
             </span>
             <span className="left-sidebar-nav-label">Stumpd</span>
           </Link>
+          <Link
+            href="/challenge"
+            className={`left-sidebar-link left-sidebar-link--with-icon${
+              pathname.startsWith("/challenge") ? " left-sidebar-link--active" : ""
+            }`}
+            onClick={onClose}
+          >
+            <span className="left-sidebar-nav-logo-wrap left-sidebar-nav-logo-wrap--svg" aria-hidden>
+              <svg className="left-sidebar-nav-icon-svg" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 3l-4 8h5l-3 10 14-12h-6l5-6H6z" fill="currentColor" />
+              </svg>
+            </span>
+            <span className="left-sidebar-nav-label">Challenge a Friend</span>
+            <span className="left-sidebar-new-badge">NEW</span>
+          </Link>
           <a
             href="https://fifawordle.com"
             className="left-sidebar-link left-sidebar-link--with-icon"

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import LeftSidebar from "./left-sidebar";
 import { dispatchOpenHowToPlay } from "./how-to-play-open";
 import { dispatchOpenHintHistory, HINT_COUNT_UPDATE_EVENT } from "./hint-history-open";
@@ -39,9 +40,11 @@ export default function PageHeader({
   godmodeHoursLeft = 0,
   userInitial = "",
 }: PageHeaderProps) {
+  const pathname = usePathname();
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [hintCount, setHintCount] = useState(0);
   const [lbOpen, setLbOpen] = useState(false);
+  const isChallengePage = pathname.startsWith("/challenge");
 
   useEffect(() => {
     const onCount = (e: Event) => {
@@ -154,6 +157,25 @@ export default function PageHeader({
             className="page-header-toolbar"
             aria-label="Help and legal"
           >
+            {showHowToPlay && !isChallengePage ? (
+              <Link
+                href="/challenge"
+                className="page-header-icon-btn page-header-challenge-btn"
+                aria-label="Challenge a friend"
+              >
+                <svg
+                  className="page-header-icon-btn__glyph"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden
+                >
+                  <path d="M6 3l-4 8h5l-3 10 14-12h-6l5-6H6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            ) : null}
             {showHowToPlay ? (
               <button
                 type="button"
