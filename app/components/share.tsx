@@ -592,10 +592,11 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
 
   const handleNativeShare = async () => {
     const text = getShareText();
+    handleCopy();
     try {
       await navigator.share({ text });
     } catch {
-      handleCopy();
+      // already copied above
     }
   };
 
