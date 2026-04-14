@@ -3527,19 +3527,28 @@ a.page-header-icon-btn {
   letter-spacing: 0.03em;
 }
 
-/* ── Share button ── */
+/* ── Share buttons ── */
+.share-btn-group {
+  display: flex;
+  gap: 10px;
+  animation: shareSectionUp 0.5s ease 0.34s both;
+}
+
+.share-modal-sticky-cta .share-btn-group {
+  animation: none;
+}
+
 .share-modal-sticky-cta .share-modal-share-btn {
   animation: none;
 }
 
 .share-modal-share-btn {
-  width: 100%;
-  padding: 15px 24px;
-  background: #538d4e;
+  flex: 1;
+  padding: 15px 16px;
   color: #fff;
   border: none;
   border-radius: 14px;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -3547,18 +3556,40 @@ a.page-header-icon-btn {
   justify-content: center;
   gap: 8px;
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s, background 0.2s;
-  box-shadow: 0 4px 18px rgba(83, 141, 78, 0.28);
   letter-spacing: 0.02em;
-  animation: shareSectionUp 0.5s ease 0.34s both;
 }
 
-.share-modal-share-btn:hover {
+.share-modal-share-btn--whatsapp {
+  background: #25D366;
+  box-shadow: 0 4px 18px rgba(37, 211, 102, 0.3);
+}
+
+.share-modal-share-btn--whatsapp:hover {
+  background: #1ebe5d;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(37, 211, 102, 0.4);
+}
+
+.share-modal-share-btn--whatsapp:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.2);
+}
+
+.share-modal-share-btn--native,
+.share-modal-share-btn--copy {
+  background: #538d4e;
+  box-shadow: 0 4px 18px rgba(83, 141, 78, 0.28);
+}
+
+.share-modal-share-btn--native:hover,
+.share-modal-share-btn--copy:hover {
   background: #4a7c44;
   transform: translateY(-2px);
   box-shadow: 0 8px 28px rgba(83, 141, 78, 0.35);
 }
 
-.share-modal-share-btn:active {
+.share-modal-share-btn--native:active,
+.share-modal-share-btn--copy:active {
   transform: translateY(0) scale(0.97);
   box-shadow: 0 2px 8px rgba(83, 141, 78, 0.2);
 }
@@ -3650,6 +3681,7 @@ a.page-header-icon-btn {
   .share-dist__row,
   .share-dist__bar,
   .share-preview-card,
+  .share-btn-group,
   .share-modal-share-btn,
   .share-modal-share-sub,
   .share-prize-hook,
