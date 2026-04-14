@@ -57,6 +57,7 @@ const HINT_LADDER: { key: string; label: string }[] = [
 const LS_HOW_TO_PLAY_DISMISSED = "stumpdpuzzle_howToPlayDismissed";
 const LS_HOW_TO_PLAY_SEEN = "stumpdpuzzle_howToPlaySeen";
 const LS_WEEKLY_NOTICE_SEEN = "stumpdpuzzle_weeklyNoticeSeen";
+const ENABLE_WEEKLY_NOTICE = false;
 
 function shouldShowWeeklyNotice(): boolean {
   try {
@@ -656,6 +657,19 @@ export default function Game() {
     refreshGodmodeState({ triggerReentry: true });
   }, [refreshGodmodeState]);
 
+  useEffect(() => {
+    if (!godmodeActive) return;
+    const id = setInterval(() => {
+      const stillActive = isGodmodeActive();
+      const hours = getGodmodeHoursRemaining();
+      setGodmodeHoursLeft(hours);
+      if (!stillActive) {
+        setGodmodeActive(false);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [godmodeActive]);
+
   useLayoutEffect(() => {
     if (godmodeActive && !showGodmodeUnlock) {
       document.body.classList.add("body--godmode");
@@ -684,7 +698,7 @@ export default function Game() {
 
     try {
       if (rejected || localStorage.getItem(LS_HOW_TO_PLAY_DISMISSED) === "1") {
-        if (!rejected && shouldShowWeeklyNotice()) {
+        if (ENABLE_WEEKLY_NOTICE && !rejected && shouldShowWeeklyNotice()) {
           markWeeklyNoticeSeen();
           setTimeout(() => setShowWeeklyNotice(true), 300);
         } else {
@@ -707,7 +721,7 @@ export default function Game() {
     }
     setShowHowToPlay(false);
 
-    if (shouldShowWeeklyNotice()) {
+    if (ENABLE_WEEKLY_NOTICE && shouldShowWeeklyNotice()) {
       markWeeklyNoticeSeen();
       setShowWeeklyNotice(true);
     } else {
