@@ -24,6 +24,7 @@ type Props = {
   canDisableHardMode: boolean;
   onAuthChange?: () => void;
   puzzleDay?: number;
+  hideHardMode?: boolean;
 };
 
 export default function SettingsModal({
@@ -35,6 +36,7 @@ export default function SettingsModal({
   canDisableHardMode,
   onAuthChange,
   puzzleDay,
+  hideHardMode,
 }: Props) {
   const toggleRef = useRef<HTMLButtonElement>(null);
   const [igniting, setIgniting] = useState(false);
@@ -194,33 +196,37 @@ export default function SettingsModal({
         </h2>
 
         <div className="settings-body">
-          <div className={`settings-option${toggleDisabled ? " settings-option--disabled" : ""}`}>
-            <div className="settings-option__info">
-              <span className="settings-option__label">Hard Mode</span>
-              <span className="settings-option__desc">
-                No hints — win to unlock Godmode for 24h
-              </span>
-              {toggleDisabled && (
-                <span className="settings-option__warn">
-                  Cannot switch modes while a game is in progress
-                </span>
-              )}
-            </div>
-            <button
-              ref={toggleRef}
-              type="button"
-              className={`settings-toggle${hardMode || igniting ? " settings-toggle--on" : ""}${igniting ? " settings-toggle--igniting" : ""}`}
-              onClick={handleToggle}
-              disabled={toggleDisabled}
-              role="switch"
-              aria-checked={hardMode}
-              aria-label="Toggle hard mode"
-            >
-              <span className="settings-toggle__thumb" />
-            </button>
-          </div>
+          {!hideHardMode && (
+            <>
+              <div className={`settings-option${toggleDisabled ? " settings-option--disabled" : ""}`}>
+                <div className="settings-option__info">
+                  <span className="settings-option__label">Hard Mode</span>
+                  <span className="settings-option__desc">
+                    No hints — win to unlock Godmode for 24h
+                  </span>
+                  {toggleDisabled && (
+                    <span className="settings-option__warn">
+                      Cannot switch modes while a game is in progress
+                    </span>
+                  )}
+                </div>
+                <button
+                  ref={toggleRef}
+                  type="button"
+                  className={`settings-toggle${hardMode || igniting ? " settings-toggle--on" : ""}${igniting ? " settings-toggle--igniting" : ""}`}
+                  onClick={handleToggle}
+                  disabled={toggleDisabled}
+                  role="switch"
+                  aria-checked={hardMode}
+                  aria-label="Toggle hard mode"
+                >
+                  <span className="settings-toggle__thumb" />
+                </button>
+              </div>
 
-          <div className="settings-divider" />
+              <div className="settings-divider" />
+            </>
+          )}
 
           {loggedIn ? (
             <div className="settings-account">

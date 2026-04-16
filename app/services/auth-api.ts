@@ -356,6 +356,35 @@ export async function postHardModePref(enabled: boolean): Promise<void> {
   }
 }
 
+/* ── Archive ── */
+
+export async function fetchArchivePlayed(): Promise<{ puzzle_day: number; won: boolean }[]> {
+  const token = getStoredToken();
+  if (!token) return [];
+  try {
+    const res = await fetch("/api/user/archive/played", {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data ?? []) as { puzzle_day: number; won: boolean }[];
+  } catch {
+    return [];
+  }
+}
+
+export async function postArchiveResult(puzzleDay: number, won: boolean): Promise<void> {
+  const token = getStoredToken();
+  if (!token) return;
+  try {
+    await fetch("/api/user/archive/result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ puzzle_day: puzzleDay, won }),
+    });
+  } catch { /* non-critical */ }
+}
+
 export async function fetchPreferences(): Promise<{ godmode_activated_at: number | null; hard_mode_pref: boolean } | null> {
   const token = getStoredToken();
   if (!token) return null;

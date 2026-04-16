@@ -1,6 +1,70 @@
 import type { GameStats } from "../components/games";
 import type { GameResultPayload } from "../services/auth-api";
 
+/* ── Archive localStorage (single key, nested by day) ── */
+
+const LS_ARCHIVE_KEY = "stumpdpuzzle_archive";
+
+export type ArchiveDayData = {
+  guesses?: Record<string, string>;
+  puzzleId?: string;
+  timerElapsed?: number;
+  timerStarted?: boolean;
+  unlockedHints?: { label: string; text: string }[];
+  usedTriviaIndices?: number[];
+  shareDismissed?: boolean;
+  won?: boolean;
+};
+
+function readAllArchive(): Record<string, ArchiveDayData> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(LS_ARCHIVE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, ArchiveDayData>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAllArchive(all: Record<string, ArchiveDayData>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LS_ARCHIVE_KEY, JSON.stringify(all));
+  } catch { /* quota / private mode */ }
+}
+
+export function readArchiveDay(day: number): ArchiveDayData | null {
+  const all = readAllArchive();
+  return all[String(day)] ?? null;
+}
+
+export function writeArchiveDay(day: number, data: ArchiveDayData): void {
+  const all = readAllArchive();
+  all[String(day)] = data;
+  writeAllArchive(all);
+}
+
+export function patchArchiveDay(day: number, patch: Partial<ArchiveDayData>): void {
+  const all = readAllArchive();
+  const existing = all[String(day)] ?? {};
+  all[String(day)] = { ...existing, ...patch };
+  writeAllArchive(all);
+}
+
+/** Returns a map of day→won for all finished archive games. */
+export function getArchivePlayedDays(): Map<number, boolean> {
+  const all = readAllArchive();
+  const map = new Map<number, boolean>();
+  for (const [day, data] of Object.entries(all)) {
+    if (data.puzzleId) {
+      map.set(Number(day), !!data.won);
+    }
+  }
+  return map;
+}
+
+/* ── Daily stats ── */
+
 const LS_STATS_KEY = "stumpdpuzzle_stats";
 const LS_STATS_RECORDED_KEY = "stumpdpuzzle_statsRecordedGameId";
 const LS_STATS_RECORDED_SET_KEY = "stumpdpuzzle_statsRecordedSet";

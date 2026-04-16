@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import ShareModal from "../components/share";
 import HowToPlayModal from "../components/how-to-play-modal";
 import GuessHistoryModal from "../components/guess-history-modal";
@@ -14,13 +16,13 @@ import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
 import { getInitialPlayerList, fetchIplPlayersFromAPI, loadFallbackPlayers } from "./ipl-players";
 import type { IplPlayerRow } from "./ipl-players";
-import { fetchPuzzleToday, fetchHardModePuzzleToday } from "../services/ipl-api";
+import { fetchPuzzleToday, fetchHardModePuzzleToday, fetchPuzzleByDay } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
 import type { GameStats, LiveStats } from "../components/games";
-import { DEFAULT_STUMPD_STATS, readStats, recordGameResult, saveGameToHistory } from "./stats-storage";
+import { DEFAULT_STUMPD_STATS, readStats, recordGameResult, saveGameToHistory, readArchiveDay, patchArchiveDay } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
 import { fetchLiveStats, incrementLiveStats, incrementGameStart } from "../services/live-stats-api";
-import { postGameResult, postHardModeResult, postAllPendingResults, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory } from "../services/auth-api";
+import { postGameResult, postHardModeResult, postAllPendingResults, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory, postArchiveResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { getAccuracyBadge, getGodmodeBadge } from "../utils/accuracy-badge";
 import { xorDecode, ENCODE_KEY } from "../utils/xor-codec";
@@ -482,11 +484,20 @@ function formatGameTimer(totalSeconds: number): string {
 
 export default function Game() {
   const shellVpClass = useGameShellViewportClass();
+  const searchParams = useSearchParams();
+  const archiveDayParam = searchParams.get("day");
+  const archiveDay = archiveDayParam ? Number(archiveDayParam) : null;
+  const isArchiveMode = archiveDay !== null && Number.isInteger(archiveDay) && archiveDay > 0;
+  const archiveDayRef = useRef(archiveDay);
+  archiveDayRef.current = archiveDay;
+  const isArchiveModeRef = useRef(isArchiveMode);
+  isArchiveModeRef.current = isArchiveMode;
 
   const [puzzleData, setPuzzleData] = useState<PuzzleData | null>(null);
   const [puzzleError, setPuzzleError] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [hardMode, setHardMode] = useState(() => {
+    if (isArchiveMode) return false;
     if (typeof window === "undefined") return false;
     try {
       return localStorage.getItem(LS_HARD_MODE_KEY) === "1";
@@ -497,9 +508,13 @@ export default function Game() {
     let cancelled = false;
     const isHard = hardMode;
 
+    const puzzlePromise = isArchiveMode
+      ? fetchPuzzleByDay(archiveDay!).catch(() => null)
+      : ensureFreshPuzzle(isHard).catch(() => null);
+
     Promise.all([
-      ensureFreshPuzzle(isHard).catch(() => null),
-      fetchLiveStats().catch(() => null),
+      puzzlePromise,
+      isArchiveMode ? Promise.resolve(null) : fetchLiveStats().catch(() => null),
       fetchIplPlayersFromAPI().catch(() => null),
     ]).then(async ([fresh, live, players]) => {
       if (cancelled) return;
@@ -509,10 +524,12 @@ export default function Game() {
           if (prev && prev.day === fresh.day && prev.encoded === fresh.encoded) return prev;
           return fresh;
         });
-        if (isHard) {
-          setHardModePuzzleDay(fresh.day);
-        } else {
-          fetchHardModePuzzleToday().then((hm) => { if (!cancelled) setHardModePuzzleDay(hm.day); }).catch(() => {});
+        if (!isArchiveMode) {
+          if (isHard) {
+            setHardModePuzzleDay(fresh.day);
+          } else {
+            fetchHardModePuzzleToday().then((hm) => { if (!cancelled) setHardModePuzzleDay(hm.day); }).catch(() => {});
+          }
         }
       } else {
         setPuzzleError(true);
@@ -537,6 +554,7 @@ export default function Game() {
       hardModeInitialRef.current = false;
       return;
     }
+    if (isArchiveMode) return;
     let cancelled = false;
     setPuzzleData(null);
     setPuzzleError(false);
@@ -814,7 +832,7 @@ export default function Game() {
   const won      = guesses.length > 0 && isSamePlayer(guesses[guesses.length - 1], answer, playerList, puzzleAnswerFullName, hardMode);
   const lost     = !won && guesses.length === MAX_GUESSES;
   const gameOver = won || lost;
-  const allAnimationsComplete = gameOver && !isAnimating && winBounceRow === null && !showGodmodeUnlock && !showGodmodeLoginPrompt;
+  const allAnimationsComplete = gameOver && !isAnimating && winBounceRow === null && (isArchiveMode || (!showGodmodeUnlock && !showGodmodeLoginPrompt));
 
   const wrongGuessCount = guesses.filter((g) => !isSamePlayer(g, answer, playerList, puzzleAnswerFullName, hardMode)).length;
 
@@ -902,7 +920,9 @@ export default function Game() {
   const viewingHint = allUnlockedHints[activeHintIdx] ?? allUnlockedHints[allUnlockedHints.length - 1];
 
   useEffect(() => {
-    persistUnlockedHints(allUnlockedHints);
+    if (!isArchiveMode) {
+      persistUnlockedHints(allUnlockedHints);
+    }
     dispatchHintCountUpdate(allUnlockedHints.length);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wrongGuessCount]);
@@ -912,9 +932,9 @@ export default function Game() {
     let cancelled = false;
 
     let isHardRestore = false;
-    try { isHardRestore = localStorage.getItem(LS_HARD_MODE_KEY) === "1"; } catch { /* */ }
-
-    syncGameIdStorage(currentGameId, isHardRestore);
+    if (!isArchiveMode) {
+      try { isHardRestore = localStorage.getItem(LS_HARD_MODE_KEY) === "1"; } catch { /* */ }
+    }
 
     setGuesses([]);
     setStatuses([]);
@@ -924,6 +944,36 @@ export default function Game() {
     setShowModal(false);
     setTimerStarted(false);
     setElapsedSeconds(0);
+
+    // Archive mode: restore from single nested key
+    if (isArchiveMode) {
+      const archiveData = readArchiveDay(archiveDay!);
+      if (archiveData?.guesses) {
+        const loaded = parseGuessObject(
+          JSON.stringify(archiveData.guesses),
+          answer, playerList, puzzleAnswerFullName, false,
+        );
+        if (loaded) {
+          const last = loaded.guesses[loaded.guesses.length - 1];
+          const wasWin = isSamePlayer(last, answer, playerList, puzzleAnswerFullName, false);
+          const gameDone = wasWin || loaded.guesses.length === MAX_GUESSES;
+          setGuesses(loaded.guesses);
+          setStatuses(loaded.statuses);
+          setLetterStatus(letterStatusFromRows(loaded.guesses, loaded.statuses));
+          if (gameDone && archiveData.shareDismissed) setShareDismissed(true);
+          if (wasWin && last !== answer) setAliasWin(true);
+        }
+      }
+      if (archiveData?.timerElapsed) {
+        setElapsedSeconds(archiveData.timerElapsed);
+        elapsedSecondsRef.current = archiveData.timerElapsed;
+      }
+      if (archiveData?.timerStarted) setTimerStarted(true);
+      return;
+    }
+
+    // Daily / hard mode: original restore logic
+    syncGameIdStorage(currentGameId, isHardRestore);
 
     try {
       const timerKey = isHardRestore ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
@@ -971,7 +1021,6 @@ export default function Game() {
       const dbFound = remote.found && !!remote.guesses_json;
       const dbCompleted = remote.completed === true;
 
-      // Nothing in DB → localStorage wins
       if (!dbFound) {
         if (local) {
           applyLoaded(local, isHardRestore);
@@ -984,7 +1033,6 @@ export default function Game() {
       const dbGuessCount = dbParsed?.guesses.length ?? 0;
       const localGuessCount = local?.guesses.length ?? 0;
 
-      // DB is finished → DB wins if parseable, otherwise fall through to localStorage
       if (dbCompleted) {
         if (dbParsed) {
           try { writeRemoteToLocalStorage(remote, currentGameId, isHardRestore, setElapsedSeconds, elapsedSecondsRef, setTimerStarted); } catch { /* */ }
@@ -998,14 +1046,12 @@ export default function Game() {
         return;
       }
 
-      // DB unfinished, local finished → localStorage wins
       if (localCompleted && local) {
         applyLoaded(local, isHardRestore);
         pushLocalToDb();
         return;
       }
 
-      // Both unfinished → more guesses wins
       if (local && localGuessCount >= dbGuessCount) {
         applyLoaded(local, isHardRestore);
         if (localGuessCount > dbGuessCount) pushLocalToDb();
@@ -1027,8 +1073,12 @@ export default function Game() {
       setElapsedSeconds(prev => {
         const next = prev + 1;
         elapsedSecondsRef.current = next;
-        const timerKey = hardModeRef.current ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
-        try { localStorage.setItem(timerKey, String(next)); } catch { /* */ }
+        if (isArchiveModeRef.current && archiveDayRef.current) {
+          patchArchiveDay(archiveDayRef.current, { timerElapsed: next });
+        } else {
+          const timerKey = hardModeRef.current ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
+          try { localStorage.setItem(timerKey, String(next)); } catch { /* */ }
+        }
         return next;
       });
     }, 1000);
@@ -1083,9 +1133,20 @@ export default function Game() {
         const gameId = currentGameIdRef.current;
         const isHard = hardModeRef.current;
 
-        persistGuess(gameId, completedRowIndex + 1, guess, ans, pl, fullName, isHard);
+        const isArchive = isArchiveModeRef.current;
+        const archiveDayVal = archiveDayRef.current;
 
-        if (isLoggedIn()) {
+        // Persist guess to archive localStorage or daily localStorage
+        if (isArchive && archiveDayVal) {
+          const existing = readArchiveDay(archiveDayVal);
+          const prevGuesses = existing?.guesses ?? {};
+          prevGuesses[String(completedRowIndex + 1)] = guess;
+          patchArchiveDay(archiveDayVal, { guesses: prevGuesses, timerStarted: true });
+        } else {
+          persistGuess(gameId, completedRowIndex + 1, guess, ans, pl, fullName, isHard);
+        }
+
+        if (!isArchive && isLoggedIn()) {
           const progress = readCurrentGameProgress(isHard, Number(gameId));
           if (progress) {
             progress.elapsed_seconds = elapsedSecondsRef.current;
@@ -1122,45 +1183,58 @@ export default function Game() {
 
         const justLost = !justWon && completedRowIndex + 1 === MAX_GUESSES;
         if (justWon || justLost) {
-          setStats(recordGameResult(justWon, gameId, isHard));
-
-          const payload: GameResultPayload = {
-            puzzle_day: Number(gameId),
-            won: justWon,
-            num_guesses: completedRowIndex + 1,
-            time_seconds: elapsedSecondsRef.current,
-            hints_used: allUnlockedHintsRef.current.length,
-            hard_mode: isHard || undefined,
-          };
-          setLastGameResult(payload);
-          saveGameToHistory(payload);
-
-          incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses, isHard || undefined).catch(() => {});
-          if (isLoggedIn()) {
-            if (isHard) {
-              postHardModeResult(payload).then(() => {
-                setLbInvalidateKey(k => k + 1);
-                if (justWon) {
-                  setGodmodeColorFlood(true);
-                  setShowGodmodeUnlock(true);
-                }
-              }).catch(() => {
-                setLbInvalidateKey(k => k + 1);
-                if (justWon) {
-                  setGodmodeColorFlood(true);
-                  setShowGodmodeUnlock(true);
-                }
-              });
-            } else {
-              postGameResult(payload).then((result) => {
-                if (result?.todayRank) setTodayRank(result.todayRank);
-                setLbInvalidateKey(k => k + 1);
-              }).catch(() => {});
+          if (isArchive && archiveDayVal) {
+            // Archive: mark finished in localStorage, post to backend
+            patchArchiveDay(archiveDayVal, {
+              puzzleId: gameId,
+              won: justWon,
+              timerElapsed: elapsedSecondsRef.current,
+            });
+            if (isLoggedIn()) {
+              postArchiveResult(archiveDayVal, justWon).catch(() => {});
             }
-          }
+          } else {
+            // Daily / hard: full stats, streaks, leaderboards
+            setStats(recordGameResult(justWon, gameId, isHard));
 
-          if (isHard && justWon && !isLoggedIn()) {
-            setShowGodmodeUnlock(true);
+            const payload: GameResultPayload = {
+              puzzle_day: Number(gameId),
+              won: justWon,
+              num_guesses: completedRowIndex + 1,
+              time_seconds: elapsedSecondsRef.current,
+              hints_used: allUnlockedHintsRef.current.length,
+              hard_mode: isHard || undefined,
+            };
+            setLastGameResult(payload);
+            saveGameToHistory(payload);
+
+            incrementLiveStats(payload.puzzle_day, payload.won, payload.num_guesses, isHard || undefined).catch(() => {});
+            if (isLoggedIn()) {
+              if (isHard) {
+                postHardModeResult(payload).then(() => {
+                  setLbInvalidateKey(k => k + 1);
+                  if (justWon) {
+                    setGodmodeColorFlood(true);
+                    setShowGodmodeUnlock(true);
+                  }
+                }).catch(() => {
+                  setLbInvalidateKey(k => k + 1);
+                  if (justWon) {
+                    setGodmodeColorFlood(true);
+                    setShowGodmodeUnlock(true);
+                  }
+                });
+              } else {
+                postGameResult(payload).then((result) => {
+                  if (result?.todayRank) setTodayRank(result.todayRank);
+                  setLbInvalidateKey(k => k + 1);
+                }).catch(() => {});
+              }
+            }
+
+            if (isHard && justWon && !isLoggedIn()) {
+              setShowGodmodeUnlock(true);
+            }
           }
         }
 
@@ -1262,14 +1336,18 @@ export default function Game() {
     } else if (/^[a-zA-Z]$/.test(key)) {
       if (!timerStarted) {
         setTimerStarted(true);
-        try { localStorage.setItem(LS_TIMER_STARTED_KEY, "1"); } catch { /* */ }
-        if (puzzleData?.day) {
-          incrementGameStart(puzzleData.day, hardMode || undefined).catch(() => {});
+        if (isArchiveMode && archiveDay) {
+          patchArchiveDay(archiveDay, { timerStarted: true });
+        } else {
+          try { localStorage.setItem(LS_TIMER_STARTED_KEY, "1"); } catch { /* */ }
+          if (puzzleData?.day) {
+            incrementGameStart(puzzleData.day, hardMode || undefined).catch(() => {});
+          }
         }
       }
       setCurrentInput(prev => prev.length < WORD_LENGTH ? prev + key.toLowerCase() : prev);
     }
-  }, [currentInput, guesses, isAnimating, gameOver, timerStarted, inputLocked, answer, validGuesses, playerList, puzzleAnswerFullName, hardMode]);
+  }, [currentInput, guesses, isAnimating, gameOver, timerStarted, inputLocked, answer, validGuesses, playerList, puzzleAnswerFullName, hardMode, isArchiveMode, archiveDay]);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -1284,7 +1362,10 @@ export default function Game() {
   const handleRetry = useCallback(() => {
     setRetrying(true);
     setPuzzleError(false);
-    ensureFreshPuzzle(hardMode)
+    const promise = isArchiveMode
+      ? fetchPuzzleByDay(archiveDay!)
+      : ensureFreshPuzzle(hardMode);
+    promise
       .then((fresh) => {
         setPuzzleData(fresh);
         setRetrying(false);
@@ -1293,7 +1374,7 @@ export default function Game() {
         setPuzzleError(true);
         setRetrying(false);
       });
-  }, [hardMode]);
+  }, [hardMode, isArchiveMode, archiveDay]);
 
   if ((puzzleError || retrying) && !puzzleData) {
     const ghostColors = [
@@ -1401,7 +1482,16 @@ export default function Game() {
 
         <div className="game-shell__top">
           {!useDarkTheme && (
-            <p className="game-subtitle game-subtitle--stumpd">Guess the Cricketer</p>
+            <p className="game-subtitle game-subtitle--stumpd">
+              {isArchiveMode ? (
+                <Link href="/archive" className="archive-subtitle-link">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                  Archive — Day {archiveDay}
+                </Link>
+              ) : (
+                "Guess the Cricketer"
+              )}
+            </p>
           )}
         </div>
 
@@ -1443,7 +1533,14 @@ export default function Game() {
 
         {allAnimationsComplete && (
           <div className="game-next-timer-inline">
-            <NextPuzzleTimer />
+            {isArchiveMode ? (
+              <Link href="/archive" className="archive-back-inline">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                Back to Archive
+              </Link>
+            ) : (
+              <NextPuzzleTimer />
+            )}
           </div>
         )}
 
@@ -1631,14 +1728,23 @@ export default function Game() {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            className="see-results-btn"
-            onClick={() => setShowModal(true)}
-          >
-            See Results
-          </button>
-          <ReminderPrompt variant="compact" />
+          {!isArchiveMode && (
+            <button
+              type="button"
+              className="see-results-btn"
+              onClick={() => setShowModal(true)}
+            >
+              See Results
+            </button>
+          )}
+          {isArchiveMode ? (
+            <Link href="/archive" className="archive-back-inline archive-back-inline--bottom">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+              Back to Archive
+            </Link>
+          ) : (
+            <ReminderPrompt variant="compact" />
+          )}
         </div>
       ) : (
       <div className="game-page__keyboard">
@@ -1802,6 +1908,7 @@ export default function Game() {
         open={showSettings}
         onClose={() => setShowSettings(false)}
         hardMode={hardMode}
+        hideHardMode={isArchiveMode}
         onToggleHardMode={(enabled: boolean, origin?: ToggleOrigin) => {
           if (guesses.length > 0 && !won && !lost) return;
           if (enabled && origin) {
@@ -1811,8 +1918,8 @@ export default function Game() {
           setHardMode(enabled);
           try { localStorage.setItem(LS_HARD_MODE_KEY, enabled ? "1" : "0"); } catch { /* */ }
         }}
-        canEnableHardMode={guesses.length === 0 || gameOver}
-        canDisableHardMode={guesses.length === 0 || gameOver}
+        canEnableHardMode={(guesses.length === 0 || gameOver) && !isArchiveMode}
+        canDisableHardMode={(guesses.length === 0 || gameOver) && !isArchiveMode}
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
           setAuthVersion(v => v + 1);
@@ -1882,7 +1989,11 @@ export default function Game() {
           onClose={() => {
             setShowModal(false);
             setShareDismissed(true);
-            persistShareDismissed(currentGameId, hardMode);
+            if (isArchiveMode && archiveDay) {
+              patchArchiveDay(archiveDay, { shareDismissed: true });
+            } else {
+              persistShareDismissed(currentGameId, hardMode);
+            }
           }}
         />
       )}

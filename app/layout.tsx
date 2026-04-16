@@ -73,7 +73,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("stumpd_auth_token");var g=localStorage.getItem("stumpdpuzzle_hmChampionTs");if(t&&g&&Date.now()-Number(g)<864e5){document.documentElement.classList.add("godmode-early");document.documentElement.style.backgroundColor="#1a1a2e";document.documentElement.style.colorScheme="dark"}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("stumpd_auth_token");var g=localStorage.getItem("stumpdpuzzle_hmChampionTs");if(t&&g&&Date.now()-Number(g)<864e5){document.documentElement.classList.add("godmode-early");document.documentElement.style.backgroundColor="#1a1a2e";document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("godmode-early");document.documentElement.style.removeProperty("background-color");document.documentElement.style.removeProperty("color-scheme")}}catch(e){}})();`,
           }}
         />
         <style

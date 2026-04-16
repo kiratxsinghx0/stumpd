@@ -160,11 +160,25 @@ export default function LeftSidebar({
           </div>
         </div>
         <nav className="left-sidebar-nav" aria-label="Site">
-          <p className="left-sidebar-nav-games-label">Games</p>
           <Link
             href="/"
             className={`left-sidebar-link left-sidebar-link--with-icon${
-              pathname === "/" || pathname === "/stumpd" ? " left-sidebar-link--active" : ""
+              pathname === "/" ? " left-sidebar-link--active" : ""
+            }`}
+            onClick={onClose}
+          >
+            <span className="left-sidebar-nav-logo-wrap" aria-hidden>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="left-sidebar-nav-icon left-sidebar-nav-icon--home">
+                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span className="left-sidebar-nav-label">Home</span>
+          </Link>
+          <p className="left-sidebar-nav-games-label">Games</p>
+          <Link
+            href="/stumpd"
+            className={`left-sidebar-link left-sidebar-link--with-icon${
+              pathname === "/stumpd" ? " left-sidebar-link--active" : ""
             }`}
             onClick={onClose}
           >

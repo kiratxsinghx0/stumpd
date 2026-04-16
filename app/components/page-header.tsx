@@ -83,7 +83,7 @@ export default function PageHeader({
     </div>
   ) : null;
 
-  const logo = (
+  const logoImage = (
     <Image
       className="page-title-logo"
       src={logoSrc}
@@ -93,6 +93,12 @@ export default function PageHeader({
       priority
       sizes="(max-width: 360px) 90vw, 18rem"
     />
+  );
+
+  const logo = (
+    <Link href="/" className="page-title-logo-link" aria-label="Back to home">
+      {logoImage}
+    </Link>
   );
 
   return (
