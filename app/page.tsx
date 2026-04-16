@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageHeader from "./components/page-header";
 import HardModeTransition from "./components/hard-mode-transition";
-import { readStats } from "./stumpd/stats-storage";
+import { readStreaks } from "./stumpd/stats-storage";
 import { fetchLiveStats } from "./services/live-stats-api";
+import { fetchMyStats, fetchMyHardModeStats } from "./services/auth-api";
 
 const GAME_MODES = [
   {
@@ -25,7 +26,7 @@ const GAME_MODES = [
   {
     id: "hard",
     title: "Hard Mode",
-    description: "Fewer hints, tougher clues. Only for the brave.",
+    description: "No clues. No hints. Pure name matching for the elite.",
     href: "/stumpd?mode=hard",
     badge: "Challenge",
     icon: (
@@ -49,26 +50,27 @@ const GAME_MODES = [
       </svg>
     ),
   },
-  {
-    id: "multiplayer",
-    title: "Multiplayer",
-    description: "Challenge your friends and compete in real time.",
-    href: "/multiplayer",
-    badge: "Coming Soon",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+  // {
+  //   id: "multiplayer",
+  //   title: "Multiplayer",
+  //   description: "Challenge your friends and compete in real time.",
+  //   href: "/multiplayer",
+  //   badge: "Coming Soon",
+  //   icon: (
+  //     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
+  //       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  //       <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+  //       <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  //       <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  //     </svg>
+  //   ),
+  // },
 ];
 
 export default function HomePage() {
   const router = useRouter();
-  const [streak, setStreak] = useState<number | null>(null);
+  const [normalStreak, setNormalStreak] = useState<number | null>(null);
+  const [hardStreak, setHardStreak] = useState<number | null>(null);
   const [totalPlayed, setTotalPlayed] = useState<number | null>(null);
   const [hmTransition, setHmTransition] = useState(false);
   const [hmTransOrigin, setHmTransOrigin] = useState({ x: 0, y: 0 });
@@ -89,8 +91,17 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const stats = readStats();
-    if (stats.currentStreak > 0) setStreak(stats.currentStreak);
+    const localNormal = readStreaks("normal");
+    const localHard = readStreaks("hard");
+    setNormalStreak(localNormal.currentStreak);
+    setHardStreak(localHard.currentStreak);
+
+    fetchMyStats().then((stats) => {
+      if (stats) setNormalStreak(stats.currentStreak);
+    });
+    fetchMyHardModeStats().then((stats) => {
+      if (stats) setHardStreak(stats.currentStreak);
+    });
 
     fetchLiveStats().then((live) => {
       if (live.totalPlayed > 0) setTotalPlayed(live.totalPlayed);
@@ -109,13 +120,27 @@ export default function HomePage() {
               <span className="hub-card__icon">{mode.icon}</span>
               <h2 className="hub-card__title">{mode.title}</h2>
               <p className="hub-card__desc">{mode.description}</p>
-              {mode.id === "daily" && streak !== null && (
-                <p className="hub-card__streak">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm-1-6l5.3-3L11 8v6z" fill="currentColor"/>
-                  </svg>
-                  {streak} day streak
-                </p>
+              {mode.id === "daily" && normalStreak !== null && (
+                normalStreak > 0 ? (
+                  <p className="hub-card__streak hub-card__streak--active">
+                    🔥 {normalStreak} day streak
+                  </p>
+                ) : (
+                  <p className="hub-card__streak hub-card__streak--none">
+                    😴 No streak yet — start one today!
+                  </p>
+                )
+              )}
+              {mode.id === "hard" && hardStreak !== null && (
+                hardStreak > 0 ? (
+                  <p className="hub-card__streak hub-card__streak--active">
+                    🔥 {hardStreak} day streak
+                  </p>
+                ) : (
+                  <p className="hub-card__streak hub-card__streak--none">
+                    😴 No streak yet — start one today!
+                  </p>
+                )
               )}
               <span className="hub-card__cta">
                 Play
@@ -150,6 +175,22 @@ export default function HomePage() {
               >
                 {inner}
               </div>
+            );
+          }
+
+          if (mode.id === "daily") {
+            return (
+              <Link
+                key={mode.href}
+                href={mode.href}
+                className={`hub-card hub-card--${mode.id}`}
+                style={{ animationDelay: `${i * 0.06}s` }}
+                onClick={() => {
+                  try { localStorage.setItem("stumpdpuzzle_hardMode", "0"); } catch {}
+                }}
+              >
+                {inner}
+              </Link>
             );
           }
 

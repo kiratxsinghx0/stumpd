@@ -12,6 +12,7 @@ import SettingsModal from "../components/settings-modal";
 import type { ToggleOrigin } from "../components/settings-modal";
 import HardModeTransition from "../components/hard-mode-transition";
 import WeeklyTopPlayersNotice from "../components/weekly-top-players-notice";
+import FunFactNotice from "../components/fun-fact-notice";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
 import { getInitialPlayerList, fetchIplPlayersFromAPI, loadFallbackPlayers } from "./ipl-players";
@@ -19,10 +20,10 @@ import type { IplPlayerRow } from "./ipl-players";
 import { fetchPuzzleToday, fetchHardModePuzzleToday, fetchPuzzleByDay } from "../services/ipl-api";
 import type { PuzzleData, PuzzleHintEntry } from "../services/ipl-api";
 import type { GameStats, LiveStats } from "../components/games";
-import { DEFAULT_STUMPD_STATS, readStats, recordGameResult, saveGameToHistory, readArchiveDay, patchArchiveDay } from "./stats-storage";
+import { DEFAULT_STUMPD_STATS, readStats, readStreaks, readModeStats, recordGameResult, saveGameToHistory, readArchiveDay, patchArchiveDay } from "./stats-storage";
 import ReminderPrompt from "../components/reminder-prompt";
 import { fetchLiveStats, incrementLiveStats, incrementGameStart } from "../services/live-stats-api";
-import { postGameResult, postHardModeResult, postAllPendingResults, isLoggedIn, fetchMyStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory, postArchiveResult } from "../services/auth-api";
+import { postGameResult, postHardModeResult, postAllPendingResults, isLoggedIn, fetchMyStats, fetchMyHardModeStats, saveGameProgress, fetchGameProgress, fetchGodmodeStatus, getStoredUser, syncGameHistory, postArchiveResult } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
 import { getAccuracyBadge, getGodmodeBadge } from "../utils/accuracy-badge";
 import { xorDecode, ENCODE_KEY } from "../utils/xor-codec";
@@ -78,6 +79,22 @@ function shouldShowWeeklyNotice(): boolean {
 function markWeeklyNoticeSeen(): void {
   try {
     localStorage.setItem(LS_WEEKLY_NOTICE_SEEN, new Date().toISOString());
+  } catch { /* */ }
+}
+
+const LS_FUN_FACT_SEEN_DAY = "stumpdpuzzle_funFactSeenDay";
+
+function hasFunFactBeenSeen(day: number): boolean {
+  try {
+    return localStorage.getItem(LS_FUN_FACT_SEEN_DAY) === String(day);
+  } catch {
+    return true;
+  }
+}
+
+function markFunFactSeen(day: number): void {
+  try {
+    localStorage.setItem(LS_FUN_FACT_SEEN_DAY, String(day));
   } catch { /* */ }
 }
 
@@ -229,6 +246,7 @@ const LS_HARD_MODE_KEY = "stumpdpuzzle_hardMode";
 const LS_HARD_GUESS_KEY = "stumpdpuzzle_hard_guess";
 const LS_HARD_PUZZLE_ID_KEY = "stumpdpuzzle_hard_puzzleId";
 const LS_HARD_TIMER_ELAPSED_KEY = "stumpdpuzzle_hard_timerElapsed";
+const LS_HARD_TIMER_STARTED_KEY = "stumpdpuzzle_hard_timerStarted";
 const LS_HARD_SHARE_DISMISSED_PUZZLE_KEY = "stumpdpuzzle_hard_shareDismissedPuzzleId";
 
 const NORMAL_GAME_STORAGE_KEYS = [
@@ -245,6 +263,7 @@ const HARD_GAME_STORAGE_KEYS = [
   LS_HARD_GUESS_KEY,
   LS_HARD_PUZZLE_ID_KEY,
   LS_HARD_TIMER_ELAPSED_KEY,
+  LS_HARD_TIMER_STARTED_KEY,
   LS_HARD_SHARE_DISMISSED_PUZZLE_KEY,
 ] as const;
 
@@ -590,6 +609,7 @@ export default function Game() {
   const [hmTransition, setHmTransition] = useState(false);
   const [hmTransOrigin, setHmTransOrigin] = useState<ToggleOrigin>({ x: 0, y: 0 });
   const [showWeeklyNotice, setShowWeeklyNotice] = useState(false);
+  const [showFunFact, setShowFunFact] = useState(false);
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
   const [shareDismissed, setShareDismissed] = useState(false);
@@ -639,7 +659,7 @@ export default function Game() {
     [playerList, playerToGuess, puzzleAnswerFullName]
   );
 
-  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showSettings || showModal || showWeeklyNotice;
+  const inputLocked = !puzzleData || !targetPlayer || !cookieConsentDone || !howToPlayDone || showHowToPlay || showHintHistory || showLeaderboard || showSettings || showModal || showWeeklyNotice || showFunFact;
 
   const answer = targetPlayer?.name.toLowerCase() ?? "";
   answerRef.current = answer;
@@ -751,6 +771,18 @@ export default function Game() {
     setShowWeeklyNotice(false);
     setHowToPlayDone(true);
   }, []);
+
+  const dismissFunFact = useCallback(() => {
+    setShowFunFact(false);
+  }, []);
+
+  useEffect(() => {
+    if (!howToPlayDone || !puzzleData?.funFact || isArchiveMode) return;
+    if (hasFunFactBeenSeen(puzzleData.day)) return;
+    markFunFactSeen(puzzleData.day);
+    const timer = setTimeout(() => setShowFunFact(true), 200);
+    return () => clearTimeout(timer);
+  }, [howToPlayDone, puzzleData, isArchiveMode]);
 
   /** Mark how-to-play seen on cookie accept so returning-user hint works. */
   useEffect(() => {
@@ -977,13 +1009,14 @@ export default function Game() {
 
     try {
       const timerKey = isHardRestore ? LS_HARD_TIMER_ELAPSED_KEY : LS_TIMER_ELAPSED_KEY;
+      const timerStartedKey = isHardRestore ? LS_HARD_TIMER_STARTED_KEY : LS_TIMER_STARTED_KEY;
       const savedElapsed = localStorage.getItem(timerKey);
       if (savedElapsed) {
         const val = parseInt(savedElapsed, 10) || 0;
         setElapsedSeconds(val);
         elapsedSecondsRef.current = val;
       }
-      if (localStorage.getItem(LS_TIMER_STARTED_KEY) === "1") setTimerStarted(true);
+      if (localStorage.getItem(timerStartedKey) === "1") setTimerStarted(true);
       setHardMode(isHardRestore);
     } catch { /* */ }
 
@@ -1281,23 +1314,33 @@ export default function Game() {
   useEffect(() => {
     if (!showModal) return;
     let cancelled = false;
-    const local = readStats();
-    setStats(local);
+    const mode = hardMode ? "hard" : "normal";
+    const modeCounters = readModeStats(mode);
+    const localStreaks = readStreaks(mode);
+    const fallback = readStats();
+    const merged: GameStats = {
+      gamesPlayed: modeCounters.gamesPlayed || fallback.gamesPlayed,
+      gamesWon: modeCounters.gamesWon || fallback.gamesWon,
+      currentStreak: localStreaks.currentStreak,
+      maxStreak: localStreaks.maxStreak,
+    };
+    setStats(merged);
 
     if (isLoggedIn()) {
-      fetchMyStats().then((server) => {
+      const fetcher = hardMode ? fetchMyHardModeStats : fetchMyStats;
+      fetcher().then((server) => {
         if (cancelled || !server) return;
         setStats({
-          gamesPlayed: Math.max(local.gamesPlayed, server.gamesPlayed),
-          gamesWon: Math.max(local.gamesWon, server.gamesWon),
-          currentStreak: Math.max(local.currentStreak, server.currentStreak),
-          maxStreak: Math.max(local.maxStreak, server.maxStreak),
+          gamesPlayed: Math.max(merged.gamesPlayed, server.gamesPlayed),
+          gamesWon: Math.max(merged.gamesWon, server.gamesWon),
+          currentStreak: server.currentStreak,
+          maxStreak: Math.max(merged.maxStreak, server.maxStreak),
         });
         if (server.todayRank) setTodayRank(server.todayRank);
       }).catch(() => {});
     }
     return () => { cancelled = true; };
-  }, [showModal]);
+  }, [showModal, hardMode]);
 
   const handleKey = useCallback((key: string) => {
     if (inputLocked || isAnimating || gameOver) return;
@@ -1339,7 +1382,10 @@ export default function Game() {
         if (isArchiveMode && archiveDay) {
           patchArchiveDay(archiveDay, { timerStarted: true });
         } else {
-          try { localStorage.setItem(LS_TIMER_STARTED_KEY, "1"); } catch { /* */ }
+          try {
+            const tsKey = hardMode ? LS_HARD_TIMER_STARTED_KEY : LS_TIMER_STARTED_KEY;
+            localStorage.setItem(tsKey, "1");
+          } catch { /* */ }
           if (puzzleData?.day) {
             incrementGameStart(puzzleData.day, hardMode || undefined).catch(() => {});
           }
@@ -1832,6 +1878,12 @@ export default function Game() {
         onClose={dismissWeeklyNotice}
       />
 
+      <FunFactNotice
+        open={showFunFact}
+        onClose={dismissFunFact}
+        funFact={puzzleData?.funFact ?? ""}
+      />
+
       <LeaderboardModal
         open={showLeaderboard}
         onClose={() => setShowLeaderboard(false)}
@@ -1879,21 +1931,29 @@ export default function Game() {
         gameResultPayload={lastGameResult}
         onAuthSuccess={async () => {
           setShowGodmodeLoginPrompt(false);
+          try { localStorage.setItem(LS_HARD_MODE_KEY, hardMode ? "1" : "0"); } catch {}
           await refreshGodmodeState();
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
 
           try { await postAllPendingResults(); } catch { /* non-critical */ }
 
-          // Save game progress for both modes
-          if (puzzleData?.day) {
-            const normalProgress = readCurrentGameProgress(false, puzzleData.day);
-            const hardProgress = readCurrentGameProgress(true, puzzleData.day);
-            if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
-            if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
-          }
+          // Save game progress for both modes using each mode's own puzzle day
+          try {
+            const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
+            const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
+            if (normalDay) {
+              const normalProgress = readCurrentGameProgress(false, Number(normalDay));
+              if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+            }
+            if (hardDay) {
+              const hardProgress = readCurrentGameProgress(true, Number(hardDay));
+              if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+            }
+          } catch { /* */ }
 
-          fetchMyStats().then((server) => {
+          const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
+          fetchStats().then((server) => {
             if (!server) return;
             setStats(server);
             if (server.todayRank) setTodayRank(server.todayRank);
@@ -1922,6 +1982,8 @@ export default function Game() {
         canDisableHardMode={(guesses.length === 0 || gameOver) && !isArchiveMode}
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
+          try { localStorage.setItem(LS_HARD_MODE_KEY, hardMode ? "1" : "0"); } catch {}
+
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
 
@@ -1929,15 +1991,22 @@ export default function Game() {
           await activateGodmode();
           await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
 
-          // Save game progress for both modes
-          if (puzzleData?.day) {
-            const normalProgress = readCurrentGameProgress(false, puzzleData.day);
-            const hardProgress = readCurrentGameProgress(true, puzzleData.day);
-            if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
-            if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
-          }
+          // Save game progress for both modes using each mode's own puzzle day
+          try {
+            const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
+            const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
+            if (normalDay) {
+              const normalProgress = readCurrentGameProgress(false, Number(normalDay));
+              if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+            }
+            if (hardDay) {
+              const hardProgress = readCurrentGameProgress(true, Number(hardDay));
+              if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+            }
+          } catch { /* */ }
 
-          fetchMyStats().then((server) => {
+          const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
+          fetchStats().then((server) => {
             if (!server) return;
             setStats(server);
             if (server.todayRank) setTodayRank(server.todayRank);
@@ -1964,6 +2033,11 @@ export default function Game() {
           todayRank={todayRank}
           hardMode={hardMode}
           onAuthChange={async () => {
+            // Re-assert the current mode in localStorage BEFORE bumping
+            // authVersion, so the restore effect reads the correct value
+            // (applyServerPrefs inside register/login may have overwritten it).
+            try { localStorage.setItem(LS_HARD_MODE_KEY, hardMode ? "1" : "0"); } catch {}
+
             setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
 
@@ -1972,15 +2046,22 @@ export default function Game() {
             await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
             setLbInvalidateKey(k => k + 1);
 
-            // Save game progress for both modes
-            if (puzzleData?.day) {
-              const normalProgress = readCurrentGameProgress(false, puzzleData.day);
-              const hardProgress = readCurrentGameProgress(true, puzzleData.day);
-              if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
-              if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
-            }
+            // Save game progress for both modes using each mode's own puzzle day
+            try {
+              const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
+              const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
+              if (normalDay) {
+                const normalProgress = readCurrentGameProgress(false, Number(normalDay));
+                if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+              }
+              if (hardDay) {
+                const hardProgress = readCurrentGameProgress(true, Number(hardDay));
+                if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+              }
+            } catch { /* */ }
 
-            fetchMyStats().then((server) => {
+            const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
+            fetchStats().then((server) => {
               if (!server) return;
               setStats(server);
               if (server.todayRank) setTodayRank(server.todayRank);

@@ -214,6 +214,25 @@ export async function fetchMyStats(): Promise<UserStats | null> {
   }
 }
 
+export async function fetchMyHardModeStats(): Promise<UserStats | null> {
+  const token = getStoredToken();
+  if (!token) return null;
+  try {
+    const res = await fetch("/api/user/hard-mode/stats", {
+      headers: authHeaders(),
+    });
+    const json = await res.json();
+    if (res.status === 401) {
+      clearAuth();
+      return null;
+    }
+    if (!json.success) return null;
+    return json.data as UserStats;
+  } catch {
+    return null;
+  }
+}
+
 export type GameProgressPayload = {
   puzzle_day: number;
   hard_mode: boolean;

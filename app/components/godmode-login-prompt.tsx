@@ -51,9 +51,10 @@ export default function GodmodeLoginPrompt({
       const localStats = { ...readStats(), ...readPerModeBaseline() };
       if (mode === "register") {
         await register(email, password, gameResultPayload ?? undefined, localStats);
-        await activateGodmode();
       } else {
         await login(email, password, localStats, gameResultPayload ?? undefined);
+      }
+      if (gameResultPayload?.hard_mode && gameResultPayload?.won) {
         await activateGodmode();
       }
       onAuthSuccess();

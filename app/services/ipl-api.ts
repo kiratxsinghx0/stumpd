@@ -10,6 +10,7 @@ export type PuzzleData = {
   fullName: string | null;
   isShortened: boolean;
   hints: PuzzleHintEntry[] | null;
+  funFact?: string | null;
   setAt: string;
   yesterdayAnswer?: string | null;
 };

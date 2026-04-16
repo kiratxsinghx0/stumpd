@@ -70,6 +70,18 @@ const LS_STATS_RECORDED_KEY = "stumpdpuzzle_statsRecordedGameId";
 const LS_STATS_RECORDED_SET_KEY = "stumpdpuzzle_statsRecordedSet";
 const LS_GAME_HISTORY_KEY = "stumpdpuzzle_gameHistory";
 
+const LS_STREAK_NORMAL_CURRENT = "stumpdpuzzle_streak_normal_current";
+const LS_STREAK_NORMAL_MAX = "stumpdpuzzle_streak_normal_max";
+const LS_STREAK_NORMAL_LAST_DAY = "stumpdpuzzle_streak_normal_lastDay";
+const LS_STREAK_HARD_CURRENT = "stumpdpuzzle_streak_hard_current";
+const LS_STREAK_HARD_MAX = "stumpdpuzzle_streak_hard_max";
+const LS_STREAK_HARD_LAST_DAY = "stumpdpuzzle_streak_hard_lastDay";
+
+const LS_PLAYED_NORMAL = "stumpdpuzzle_played_normal";
+const LS_WON_NORMAL = "stumpdpuzzle_won_normal";
+const LS_PLAYED_HARD = "stumpdpuzzle_played_hard";
+const LS_WON_HARD = "stumpdpuzzle_won_hard";
+
 export const DEFAULT_STUMPD_STATS: GameStats = {
   gamesPlayed: 0,
   gamesWon: 0,
@@ -95,6 +107,76 @@ export function persistStats(stats: GameStats): void {
   } catch {
     /* quota / private mode */
   }
+}
+
+/* ── Per-mode streak helpers (localStorage) ── */
+
+function lsGetInt(key: string): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    return parseInt(localStorage.getItem(key) || "0", 10) || 0;
+  } catch { return 0; }
+}
+
+function lsSetInt(key: string, value: number): void {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(key, String(value)); } catch { /* */ }
+}
+
+export function readStreaks(mode: "normal" | "hard"): { currentStreak: number; maxStreak: number; lastPuzzleDay: number } {
+  if (typeof window === "undefined") return { currentStreak: 0, maxStreak: 0, lastPuzzleDay: 0 };
+
+  const currentKey = mode === "hard" ? LS_STREAK_HARD_CURRENT : LS_STREAK_NORMAL_CURRENT;
+  const maxKey = mode === "hard" ? LS_STREAK_HARD_MAX : LS_STREAK_NORMAL_MAX;
+  const lastDayKey = mode === "hard" ? LS_STREAK_HARD_LAST_DAY : LS_STREAK_NORMAL_LAST_DAY;
+
+  // Legacy migration: if normal streak keys have never been written, try to
+  // seed from the old shared stats blob. Only safe when no per-mode keys
+  // exist at all — once the new system is active the shared blob mixes modes.
+  if (mode === "normal" && localStorage.getItem(currentKey) === null) {
+    const newSystemActive = localStorage.getItem(LS_STREAK_HARD_CURRENT) !== null
+      || localStorage.getItem(LS_PLAYED_HARD) !== null
+      || localStorage.getItem(LS_PLAYED_NORMAL) !== null;
+
+    if (!newSystemActive) {
+      try {
+        const raw = localStorage.getItem(LS_STATS_KEY);
+        if (raw) {
+          const old = JSON.parse(raw) as Partial<GameStats>;
+          const cur = old.currentStreak ?? 0;
+          const max = old.maxStreak ?? 0;
+          lsSetInt(currentKey, cur);
+          lsSetInt(maxKey, max);
+          return { currentStreak: cur, maxStreak: max, lastPuzzleDay: 0 };
+        }
+      } catch { /* */ }
+    }
+  }
+
+  return {
+    currentStreak: lsGetInt(currentKey),
+    maxStreak: lsGetInt(maxKey),
+    lastPuzzleDay: lsGetInt(lastDayKey),
+  };
+}
+
+export function persistStreaks(mode: "normal" | "hard", current: number, max: number, lastPuzzleDay?: number): void {
+  if (mode === "hard") {
+    lsSetInt(LS_STREAK_HARD_CURRENT, current);
+    lsSetInt(LS_STREAK_HARD_MAX, max);
+    if (lastPuzzleDay != null) lsSetInt(LS_STREAK_HARD_LAST_DAY, lastPuzzleDay);
+  } else {
+    lsSetInt(LS_STREAK_NORMAL_CURRENT, current);
+    lsSetInt(LS_STREAK_NORMAL_MAX, max);
+    if (lastPuzzleDay != null) lsSetInt(LS_STREAK_NORMAL_LAST_DAY, lastPuzzleDay);
+  }
+}
+
+/** Per-mode played/won counts from localStorage (not derived from history). */
+export function readModeStats(mode: "normal" | "hard"): { gamesPlayed: number; gamesWon: number } {
+  const playedKey = mode === "hard" ? LS_PLAYED_HARD : LS_PLAYED_NORMAL;
+  const wonKey = mode === "hard" ? LS_WON_HARD : LS_WON_NORMAL;
+  return { gamesPlayed: lsGetInt(playedKey), gamesWon: lsGetInt(wonKey) };
 }
 
 export function readPerModeBaseline(): {
@@ -161,32 +243,51 @@ function persistRecordedSet(set: Set<string>): void {
 
 /**
  * Updates played / wins / streaks once per puzzle `gameId` per mode.
- * Streak only increments once per puzzle_day (first mode played counts).
+ * Each mode now has its own independent streak tracked in localStorage.
+ * Uses puzzle_day to detect gaps — skipping a day resets currentStreak.
  */
 export function recordGameResult(won: boolean, gameId: string, hardMode?: boolean): GameStats {
   const prev = readStats();
-  const modeKey = `${gameId}_${hardMode ? "hard" : "normal"}`;
+  const mode = hardMode ? "hard" : "normal";
+  const modeKey = `${gameId}_${mode}`;
   const recorded = readRecordedSet();
   if (recorded.has(modeKey)) return prev;
 
-  const dayKey = `${gameId}_day`;
-  const dayAlreadyCounted = recorded.has(dayKey);
+  const puzzleDay = parseInt(gameId, 10) || 0;
+  const modeStreaks = readStreaks(mode);
+
+  const isConsecutive = modeStreaks.lastPuzzleDay === 0 ||
+    puzzleDay === modeStreaks.lastPuzzleDay + 1;
+
+  let newCurrent: number;
+  if (!won) {
+    newCurrent = 0;
+  } else if (isConsecutive) {
+    newCurrent = modeStreaks.currentStreak + 1;
+  } else {
+    newCurrent = 1;
+  }
+  const newMax = Math.max(modeStreaks.maxStreak, newCurrent);
+  persistStreaks(mode, newCurrent, newMax, puzzleDay);
+
+  const playedKey = hardMode ? LS_PLAYED_HARD : LS_PLAYED_NORMAL;
+  const wonKey = hardMode ? LS_WON_HARD : LS_WON_NORMAL;
+  const modePlayed = lsGetInt(playedKey) + 1;
+  const modeWon = lsGetInt(wonKey) + (won ? 1 : 0);
+  lsSetInt(playedKey, modePlayed);
+  lsSetInt(wonKey, modeWon);
 
   const next: GameStats = {
-    gamesPlayed: prev.gamesPlayed + 1,
-    gamesWon: prev.gamesWon + (won ? 1 : 0),
-    currentStreak: dayAlreadyCounted
-      ? prev.currentStreak
-      : won ? prev.currentStreak + 1 : 0,
-    maxStreak: dayAlreadyCounted
-      ? prev.maxStreak
-      : won
-        ? Math.max(prev.maxStreak, prev.currentStreak + 1)
-        : prev.maxStreak,
+    gamesPlayed: modePlayed,
+    gamesWon: modeWon,
+    currentStreak: newCurrent,
+    maxStreak: newMax,
   };
-  persistStats(next);
+  // Persist per-mode played/won to the shared blob for backward compat;
+  // streak values stay only in per-mode keys to avoid cross-mode leaks.
+  persistStats({ ...prev, gamesPlayed: prev.gamesPlayed + 1, gamesWon: prev.gamesWon + (won ? 1 : 0) });
+
   recorded.add(modeKey);
-  if (!dayAlreadyCounted) recorded.add(dayKey);
   persistRecordedSet(recorded);
   try {
     localStorage.setItem(LS_STATS_RECORDED_KEY, modeKey);

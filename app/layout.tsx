@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { SITE_URL } from "../lib/site";
 import { CookieBanner } from "./components/cookie-banner";
 import "./globals.css";
@@ -71,7 +72,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
+        <Script
+          id="godmode-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem("stumpd_auth_token");var g=localStorage.getItem("stumpdpuzzle_hmChampionTs");if(t&&g&&Date.now()-Number(g)<864e5){document.documentElement.classList.add("godmode-early");document.documentElement.style.backgroundColor="#1a1a2e";document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("godmode-early");document.documentElement.style.removeProperty("background-color");document.documentElement.style.removeProperty("color-scheme")}}catch(e){}})();`,
           }}
