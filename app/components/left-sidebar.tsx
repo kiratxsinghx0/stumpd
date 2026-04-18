@@ -13,6 +13,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fraunces } from "next/font/google";
+import { isLoggedIn, getStoredUser, clearAuth } from "../services/auth-api";
+import { dispatchOpenSettings } from "./settings-modal";
 
 
 const kylogBrand = Fraunces({
@@ -45,6 +47,15 @@ export default function LeftSidebar({
   const [mounted, setMounted] = useState(false);
   const [exiting, setExiting] = useState(false);
   const exitFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setLoggedIn(isLoggedIn());
+      setUserEmail(getStoredUser()?.email ?? null);
+    }
+  }, [open]);
 
   /* Keep mounted through close so exit animations can run (see globals.css leftSidebarSlideOut). */
   /* eslint-disable react-hooks/set-state-in-effect -- prop-driven drawer: stay mounted until slide-out ends */
@@ -235,6 +246,50 @@ export default function LeftSidebar({
             <Link href="/contact" className="left-sidebar-link" onClick={() => { saveLegalReferrer(pathname); onClose(); }}>
               Contact
             </Link>
+          </section>
+          <section
+            className="left-sidebar-section left-sidebar-section--account"
+            aria-labelledby="left-sidebar-account-heading"
+          >
+            <h3
+              id="left-sidebar-account-heading"
+              className="left-sidebar-section-title"
+            >
+              Account
+            </h3>
+            {loggedIn ? (
+              <>
+                <span className="left-sidebar-account-email">{userEmail}</span>
+                <button
+                  type="button"
+                  className="left-sidebar-link left-sidebar-auth-btn left-sidebar-logout-btn"
+                  onClick={() => {
+                    clearAuth();
+                    try { localStorage.removeItem("stumpdpuzzle_hmChampionTs"); } catch {}
+                    document.body.classList.remove("body--godmode");
+                    document.documentElement.classList.remove("godmode-early");
+                    document.documentElement.style.removeProperty("background-color");
+                    document.documentElement.style.removeProperty("color-scheme");
+                    setLoggedIn(false);
+                    setUserEmail(null);
+                    onClose();
+                  }}
+                >
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="left-sidebar-link left-sidebar-auth-btn"
+                onClick={() => {
+                  onClose();
+                  setTimeout(() => dispatchOpenSettings(), 320);
+                }}
+              >
+                Log In / Sign Up
+              </button>
+            )}
           </section>
         </nav>
       </aside>

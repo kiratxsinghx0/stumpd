@@ -3,11 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import PageHeader from "./components/page-header";
+import PageHeader, { OPEN_SETTINGS_EVENT, OPEN_LEADERBOARD_EVENT, OPEN_HOW_TO_PLAY_EVENT, dispatchLeaderboardState } from "./components/page-header";
 import HardModeTransition from "./components/hard-mode-transition";
+import SettingsModal from "./components/settings-modal";
+import LeaderboardModal from "./components/leaderboard-modal";
+import HowToPlayModal from "./components/how-to-play-modal";
+import StumpdHowToPlay from "./stumpd/stumpd-how-to-play";
 import { readStreaks } from "./stumpd/stats-storage";
 import { fetchLiveStats } from "./services/live-stats-api";
 import { fetchMyStats, fetchMyHardModeStats } from "./services/auth-api";
+import { fetchPuzzleToday, fetchHardModePuzzleToday } from "./services/ipl-api";
 
 const GAME_MODES = [
   {
@@ -36,6 +41,21 @@ const GAME_MODES = [
     ),
   },
   {
+    id: "multiplayer",
+    title: "Multiplayer",
+    description: "Challenge your friends and compete in real time.",
+    href: "/challenge",
+    badge: "Live",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     id: "archive",
     title: "Archive",
     description: "Missed a day? Play any past Stumpd puzzle.",
@@ -50,21 +70,6 @@ const GAME_MODES = [
       </svg>
     ),
   },
-  // {
-  //   id: "multiplayer",
-  //   title: "Multiplayer",
-  //   description: "Challenge your friends and compete in real time.",
-  //   href: "/multiplayer",
-  //   badge: "Coming Soon",
-  //   icon: (
-  //     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
-  //       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  //       <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
-  //       <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  //       <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  //     </svg>
-  //   ),
-  // },
 ];
 
 export default function HomePage() {
@@ -74,6 +79,38 @@ export default function HomePage() {
   const [totalPlayed, setTotalPlayed] = useState<number | null>(null);
   const [hmTransition, setHmTransition] = useState(false);
   const [hmTransOrigin, setHmTransOrigin] = useState({ x: 0, y: 0 });
+  const [showSettings, setShowSettings] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [puzzleDay, setPuzzleDay] = useState<number | undefined>(undefined);
+  const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    fetchPuzzleToday().then((p) => setPuzzleDay(p.day)).catch(() => {});
+    fetchHardModePuzzleToday().then((p) => setHardModePuzzleDay(p.day)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const onOpenSettings = () => setShowSettings(true);
+    window.addEventListener(OPEN_SETTINGS_EVENT, onOpenSettings);
+    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, onOpenSettings);
+  }, []);
+
+  useEffect(() => {
+    const onOpenLb = () => setShowLeaderboard(true);
+    window.addEventListener(OPEN_LEADERBOARD_EVENT, onOpenLb);
+    return () => window.removeEventListener(OPEN_LEADERBOARD_EVENT, onOpenLb);
+  }, []);
+
+  useEffect(() => {
+    const onOpenHtp = () => setShowHowToPlay(true);
+    window.addEventListener(OPEN_HOW_TO_PLAY_EVENT, onOpenHtp);
+    return () => window.removeEventListener(OPEN_HOW_TO_PLAY_EVENT, onOpenHtp);
+  }, []);
+
+  useEffect(() => {
+    dispatchLeaderboardState(showLeaderboard);
+  }, [showLeaderboard]);
 
   useEffect(() => {
     try {
@@ -229,6 +266,27 @@ export default function HomePage() {
           {totalPlayed.toLocaleString()} games played today
         </p>
       )}
+
+      <LeaderboardModal
+        open={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+        puzzleDay={puzzleDay}
+        hardModePuzzleDay={hardModePuzzleDay}
+      />
+
+      <HowToPlayModal open={showHowToPlay} onClose={() => setShowHowToPlay(false)}>
+        <StumpdHowToPlay />
+      </HowToPlayModal>
+
+      <SettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        hardMode={false}
+        onToggleHardMode={() => {}}
+        canEnableHardMode={false}
+        canDisableHardMode={false}
+        hideHardMode
+      />
     </main>
   );
 }

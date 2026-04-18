@@ -154,6 +154,8 @@ export default function SettingsModal({
       }
     }
     clearAuth();
+    try { localStorage.removeItem("stumpdpuzzle_hmChampionTs"); } catch {}
+    document.body.classList.remove("body--godmode");
     document.documentElement.classList.remove("godmode-early");
     document.documentElement.style.removeProperty("background-color");
     document.documentElement.style.removeProperty("color-scheme");

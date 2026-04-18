@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import LeftSidebar from "./left-sidebar";
 import { dispatchOpenHowToPlay } from "./how-to-play-open";
 import { dispatchOpenHintHistory, HINT_COUNT_UPDATE_EVENT } from "./hint-history-open";
@@ -39,6 +40,7 @@ export default function PageHeader({
   godmodeHoursLeft = 0,
   userInitial = "",
 }: PageHeaderProps) {
+  const pathname = usePathname();
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [hintCount, setHintCount] = useState(0);
   const [lbOpen, setLbOpen] = useState(false);
@@ -259,10 +261,32 @@ export default function PageHeader({
                 </svg>
               </button>
             ) : (
-              <Link
-                href="/how-to-play"
+              <>
+              <button
+                type="button"
+                className={`page-header-icon-btn page-header-leaderboard-btn${lbOpen ? " page-header-leaderboard-btn--active" : ""}`}
+                aria-label="Leaderboard"
+                onClick={() => dispatchOpenLeaderboard()}
+              >
+                <svg
+                  className="page-header-icon-btn__glyph"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden
+                >
+                  <rect x="3" y="13" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                  <rect x="9.5" y="5" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                  <rect x="16" y="9" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                </svg>
+              </button>
+              <button
+                type="button"
                 className="page-header-icon-btn page-header-howtoplay-btn"
                 aria-label="How to play"
+                onClick={() => dispatchOpenHowToPlay()}
               >
                 <svg
                   className="page-header-icon-btn__glyph"
@@ -282,7 +306,8 @@ export default function PageHeader({
                   />
                   <circle cx="12" cy="17" r="1" fill="currentColor" />
                 </svg>
-              </Link>
+              </button>
+              </>
             )}
           </nav>
         </div>

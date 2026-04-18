@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import StumpdHowToPlay from "../stumpd/stumpd-how-to-play";
-import Link from "next/link";
+import BackLink from "./back-link";
 
 export const metadata: Metadata = {
   title: "How to Play — Stumpd",
@@ -13,7 +13,7 @@ export default function HowToPlayPage() {
     <main className="htp-standalone">
       <div className="htp-standalone__inner">
         <p className="htp-standalone__back">
-          <Link href="/">← Back to Stumpd</Link>
+          <BackLink />
         </p>
         <StumpdHowToPlay />
       </div>

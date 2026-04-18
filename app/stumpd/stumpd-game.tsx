@@ -692,7 +692,7 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    refreshGodmodeState({ triggerReentry: true });
+    refreshGodmodeState({ triggerReentry: !isArchiveMode });
   }, [refreshGodmodeState]);
 
   useEffect(() => {
@@ -709,9 +709,9 @@ export default function Game() {
   }, [godmodeActive]);
 
   useLayoutEffect(() => {
-    if (godmodeActive && !showGodmodeUnlock) {
+    if (godmodeActive && !showGodmodeUnlock && !isArchiveMode) {
       document.body.classList.add("body--godmode");
-    } else if (!godmodeActive) {
+    } else if (!godmodeActive || isArchiveMode) {
       document.body.classList.remove("body--godmode");
       document.documentElement.classList.remove("godmode-early");
       document.documentElement.style.removeProperty("background-color");
@@ -1432,8 +1432,8 @@ export default function Game() {
       ["","","","",""],
     ];
     return (
-      <div className={`game-page__content${godmodeActive ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
+      <div className={`game-page__content${godmodeActive && !isArchiveMode ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} />
         <div className="game-error">
           <div className="game-error__ghost-grid" aria-hidden="true">
             {ghostColors.map((row, ri) => (
@@ -1475,8 +1475,8 @@ export default function Game() {
 
   if (!puzzleData || (playersLoading && playerList.length === 0)) {
     return (
-      <div className={`game-page__content${godmodeActive ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
+      <div className={`game-page__content${godmodeActive && !isArchiveMode ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} />
         <div className="game-loading">
           <div className="game-loading__spinner" />
           <p className="game-loading__text">Loading puzzle…</p>
@@ -1487,8 +1487,8 @@ export default function Game() {
 
   if (!targetPlayer && !playersLoading) {
     return (
-      <div className={`game-page__content${godmodeActive ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
+      <div className={`game-page__content${godmodeActive && !isArchiveMode ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} />
         <div className="game-error">
           <div className="game-error__card">
             <div className="game-error__icon-wrap">
@@ -1511,19 +1511,19 @@ export default function Game() {
     );
   }
 
-  const useDarkTheme = godmodeActive;
+  const useDarkTheme = godmodeActive && !isArchiveMode;
   const activeColorMap = useDarkTheme ? GODMODE_STATUS_COLOR : STATUS_COLOR;
   const defaultKeyBg = useDarkTheme ? "#2a2e3a" : "#d3d6da";
   const defaultKeyColor = useDarkTheme ? "#e0c97f" : "#000";
   const emptyBg = useDarkTheme ? "#1e2230" : "#fff";
-  const emptyBorder = useDarkTheme ? "#3d4555" : "#d3d6da";
+  const emptyBorder = useDarkTheme ? "#3d4555" : "#939699";
   const emptyText = useDarkTheme ? "#e0c97f" : "#000";
-  const filledBorder = useDarkTheme ? "#8b7e4a" : "#888";
+  const filledBorder = useDarkTheme ? "#8b7e4a" : "#666";
 
   return (
     <>
       <div className={`game-page__content${useDarkTheme ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay={formatGameTimer(elapsedSeconds)} logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive} godmodeHoursLeft={godmodeHoursLeft} userInitial={userInitial} />
+        <PageHeader timerDisplay={formatGameTimer(elapsedSeconds)} logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={useDarkTheme} godmodeHoursLeft={useDarkTheme ? godmodeHoursLeft : 0} userInitial={userInitial} />
         <div className={shellVpClass ? `game-shell ${shellVpClass}` : "game-shell"}>
 
         <div className="game-shell__top">
@@ -1890,7 +1890,7 @@ export default function Game() {
         puzzleDay={puzzleData?.day}
         hardModePuzzleDay={hardModePuzzleDay}
         invalidateKey={lbInvalidateKey}
-        isGodmode={godmodeActive}
+        isGodmode={useDarkTheme}
       />
 
       <HardModeTransition
@@ -1987,30 +1987,34 @@ export default function Game() {
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
 
-          try { await postAllPendingResults(); } catch { /* non-critical */ }
-          await activateGodmode();
-          await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
+          const loggedIn = isLoggedIn();
+          if (loggedIn) {
+            try { await postAllPendingResults(); } catch { /* non-critical */ }
+            await activateGodmode();
+            await refreshGodmodeState({ triggerReentry: true, reentry: godmodeActive });
 
-          // Save game progress for both modes using each mode's own puzzle day
-          try {
-            const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
-            const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
-            if (normalDay) {
-              const normalProgress = readCurrentGameProgress(false, Number(normalDay));
-              if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
-            }
-            if (hardDay) {
-              const hardProgress = readCurrentGameProgress(true, Number(hardDay));
-              if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
-            }
-          } catch { /* */ }
+            try {
+              const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
+              const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
+              if (normalDay) {
+                const normalProgress = readCurrentGameProgress(false, Number(normalDay));
+                if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+              }
+              if (hardDay) {
+                const hardProgress = readCurrentGameProgress(true, Number(hardDay));
+                if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+              }
+            } catch { /* */ }
 
-          const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
-          fetchStats().then((server) => {
-            if (!server) return;
-            setStats(server);
-            if (server.todayRank) setTodayRank(server.todayRank);
-          }).catch(() => {});
+            const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
+            fetchStats().then((server) => {
+              if (!server) return;
+              setStats(server);
+              if (server.todayRank) setTodayRank(server.todayRank);
+            }).catch(() => {});
+          } else {
+            setGodmodeActive(false);
+          }
           setLbInvalidateKey(k => k + 1);
         }}
       />
@@ -2041,31 +2045,35 @@ export default function Game() {
             setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
 
-            try { await postAllPendingResults(); } catch { /* non-critical */ }
-            await activateGodmode();
-            await refreshGodmodeState({ triggerReentry: isLoggedIn(), reentry: godmodeActive });
+            const loggedIn = isLoggedIn();
+            if (loggedIn) {
+              try { await postAllPendingResults(); } catch { /* non-critical */ }
+              await activateGodmode();
+              await refreshGodmodeState({ triggerReentry: true, reentry: godmodeActive });
+
+              try {
+                const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
+                const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
+                if (normalDay) {
+                  const normalProgress = readCurrentGameProgress(false, Number(normalDay));
+                  if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
+                }
+                if (hardDay) {
+                  const hardProgress = readCurrentGameProgress(true, Number(hardDay));
+                  if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
+                }
+              } catch { /* */ }
+
+              const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
+              fetchStats().then((server) => {
+                if (!server) return;
+                setStats(server);
+                if (server.todayRank) setTodayRank(server.todayRank);
+              }).catch(() => {});
+            } else {
+              setGodmodeActive(false);
+            }
             setLbInvalidateKey(k => k + 1);
-
-            // Save game progress for both modes using each mode's own puzzle day
-            try {
-              const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
-              const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
-              if (normalDay) {
-                const normalProgress = readCurrentGameProgress(false, Number(normalDay));
-                if (normalProgress) saveGameProgress(normalProgress).catch(() => {});
-              }
-              if (hardDay) {
-                const hardProgress = readCurrentGameProgress(true, Number(hardDay));
-                if (hardProgress) saveGameProgress(hardProgress).catch(() => {});
-              }
-            } catch { /* */ }
-
-            const fetchStats = hardMode ? fetchMyHardModeStats : fetchMyStats;
-            fetchStats().then((server) => {
-              if (!server) return;
-              setStats(server);
-              if (server.todayRank) setTodayRank(server.todayRank);
-            }).catch(() => {});
           }}
           onClose={() => {
             setShowModal(false);
