@@ -726,7 +726,7 @@ button:not(.game-key):not(.game-key-wide):active {
   flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   max-width: 100%;
   min-height: var(--header-icon-btn);
   overflow-x: auto;
@@ -817,13 +817,10 @@ a.page-header-icon-btn {
   height: clamp(24px, 6vw, 28px);
 }
 
-.page-header-challenge-btn .page-header-icon-btn__glyph,
-.page-header-hint-btn .page-header-icon-btn__glyph,
-.page-header-leaderboard-btn .page-header-icon-btn__glyph,
-.page-header-settings-btn .page-header-icon-btn__glyph,
-.page-header-howtoplay-btn .page-header-icon-btn__glyph {
-  width: clamp(17px, 4.5vw, 20px);
-  height: clamp(17px, 4.5vw, 20px);
+.page-header-howtoplay-btn .page-header-icon-btn__glyph,
+.page-header-leaderboard-btn .page-header-icon-btn__glyph {
+  width: clamp(18px, 5vw, 22px);
+  height: clamp(18px, 5vw, 22px);
 }
 
 @media (min-width: 640px) {
@@ -880,16 +877,15 @@ a.page-header-icon-btn {
 }
 
 /* Consistent size for all toolbar icon buttons */
-.page-header-challenge-btn,
 .page-header-hint-btn,
 .page-header-leaderboard-btn,
 .page-header-settings-btn,
 .page-header-howtoplay-btn {
   position: relative;
-  width: calc(var(--header-icon-btn) * 0.78);
-  height: calc(var(--header-icon-btn) * 0.78);
-  min-width: calc(var(--header-icon-btn) * 0.78);
-  min-height: calc(var(--header-icon-btn) * 0.78);
+  width: calc(var(--header-icon-btn) * 0.85);
+  height: calc(var(--header-icon-btn) * 0.85);
+  min-width: calc(var(--header-icon-btn) * 0.85);
+  min-height: calc(var(--header-icon-btn) * 0.85);
 }
 
 /* Hint button — always green */
@@ -9491,6 +9487,13 @@ body.body--godmode .game-page__see-results {
 .ch-result__banner--lost .ch-result__sub { color: #b91c1c; }
 .ch-result__banner--draw .ch-result__sub { color: #a16207; }
 
+.ch-result__alias {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #059669;
+  font-style: italic;
+}
+
 .ch-result__boards-card {
   width: 100%;
   background: #fafafa;
@@ -9727,6 +9730,13 @@ body.body--godmode .game-page__see-results {
   color: #6b7280;
 }
 
+.ch-game-end__alias {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #059669;
+  font-style: italic;
+}
+
 .ch-game-end--won .ch-game-end__title { color: #065f46; }
 .ch-game-end--lost .ch-game-end__title { color: #991b1b; }
 
@@ -9760,10 +9770,10 @@ body.body--godmode .game-page__see-results {
 .ch-result__series-btn {
   flex: 1;
   padding: 12px;
-  border: 2px solid #7c3aed;
+  border: 2px solid #6aaa64;
   border-radius: 12px;
   background: transparent;
-  color: #7c3aed;
+  color: #6aaa64;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
@@ -9771,9 +9781,9 @@ body.body--godmode .game-page__see-results {
 }
 
 .ch-result__series-btn:hover {
-  background: #7c3aed;
+  background: #6aaa64;
   color: #fff;
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 2px 10px rgba(106, 170, 100, 0.3);
   transform: translateY(-1px);
 }
 
@@ -9798,8 +9808,8 @@ body.body--godmode .game-page__see-results {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: linear-gradient(135deg, #f0e7ff 0%, #ede9fe 100%);
-  border: 1px solid #ddd6fe;
+  background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+  border: 1px solid #bbf7d0;
   border-radius: 14px;
   animation: hubCardIn 0.3s ease both;
 }
@@ -9808,7 +9818,7 @@ body.body--godmode .game-page__see-results {
   margin: 0;
   font-size: 0.92rem;
   font-weight: 600;
-  color: #4c1d95;
+  color: #14532d;
   text-align: center;
 }
 
@@ -9865,28 +9875,23 @@ body.body--godmode .game-page__see-results {
 /* ── Series Bar (in-game scoreboard) ── */
 
 .ch-game__series-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 14px;
-  margin-bottom: 4px;
-  background: linear-gradient(135deg, #f0e7ff 0%, #ede9fe 100%);
-  border-radius: 10px;
-  border: 1px solid #ddd6fe;
+  justify-content: center;
+  align-self: center;
+  padding: 2px 10px;
+  margin-bottom: 2px;
+  background: #f0fdf4;
+  border-radius: 20px;
+  border: 1px solid #bbf7d0;
 }
 
 .ch-game__series-label {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  color: #7c3aed;
+  color: #2d6a4f;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.ch-game__series-score {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #4c1d95;
 }
 
 /* ── Round Result Screen ── */
@@ -9942,6 +9947,13 @@ body.body--godmode .game-page__see-results {
   margin: 2px 0 0;
   font-size: 0.85rem;
   color: #6b7280;
+}
+
+.ch-round-result__alias {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #059669;
+  font-style: italic;
 }
 
 /* ── Scoreboard (round result + series result) ── */
@@ -10003,18 +10015,18 @@ body.body--godmode .game-page__see-results {
   padding: 14px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  background: linear-gradient(135deg, #6aaa64 0%, #4a8a5e 100%);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 2px 8px rgba(106, 170, 100, 0.3);
 }
 
 .ch-round-result__ready-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 4px 14px rgba(106, 170, 100, 0.4);
 }
 
 .ch-round-result__ready-btn:active {
@@ -10045,8 +10057,8 @@ body.body--godmode .game-page__see-results {
   justify-content: center;
   gap: 16px;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #f0e7ff 0%, #ede9fe 100%);
-  border: 1px solid #ddd6fe;
+  background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+  border: 1px solid #bbf7d0;
   border-radius: 14px;
   width: 100%;
   max-width: 320px;
@@ -10063,7 +10075,7 @@ body.body--godmode .game-page__see-results {
 .ch-result__series-score-name {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #7c3aed;
+  color: #2d6a4f;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -10071,14 +10083,14 @@ body.body--godmode .game-page__see-results {
 .ch-result__series-score-num {
   font-size: 2rem;
   font-weight: 900;
-  color: #4c1d95;
+  color: #14532d;
   line-height: 1;
 }
 
 .ch-result__series-score-dash {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #c4b5fd;
+  color: #86efac;
 }
 
 /* ── Challenge responsive ── */

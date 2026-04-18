@@ -82,6 +82,7 @@ export type RoundOverData = {
   opponentName: string;
   creatorBoard: GuessEntry[];
   opponentBoard: GuessEntry[];
+  aliasWord?: string | null;
 };
 
 export type SeriesOverData = {
@@ -97,6 +98,7 @@ export type SeriesOverData = {
   opponentName: string;
   creatorBoard: GuessEntry[];
   opponentBoard: GuessEntry[];
+  aliasWord?: string | null;
 };
 
 export type GameOverData = {
@@ -107,6 +109,7 @@ export type GameOverData = {
   opponentName: string;
   creatorBoard: GuessEntry[];
   opponentBoard: GuessEntry[];
+  aliasWord?: string | null;
 };
 
 export type SeriesProposedData = {

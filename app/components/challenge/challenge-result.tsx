@@ -36,6 +36,7 @@ type Props = {
   socket?: Socket;
   roomCode?: string;
   onSeriesAccepted?: () => void;
+  aliasWord?: string | null;
 };
 
 export default function ChallengeResult({
@@ -47,6 +48,7 @@ export default function ChallengeResult({
   onHome,
   socket, roomCode,
   onSeriesAccepted,
+  aliasWord,
 }: Props) {
   const iWon = winner === myRole;
   const isDraw = winner === "draw";
@@ -199,19 +201,24 @@ export default function ChallengeResult({
         <div className="ch-result__banner-text">
           <h2 className="ch-result__heading">{headingText}</h2>
           <p className="ch-result__sub">{subText}</p>
+          {aliasWord && (
+            <p className="ch-result__alias">
+              Guessed from hints! The word was <strong>{aliasWord}</strong>
+            </p>
+          )}
         </div>
       </div>
 
       {isSeries && (
         <div className="ch-result__series-score">
           <div className="ch-result__series-score-side">
-            <span className="ch-result__series-score-name">{myRole === "creator" ? "You" : creatorName}</span>
-            <span className="ch-result__series-score-num">{creatorScore}</span>
+            <span className="ch-result__series-score-name">{theirName}</span>
+            <span className="ch-result__series-score-num">{theirScore}</span>
           </div>
           <span className="ch-result__series-score-dash">—</span>
           <div className="ch-result__series-score-side">
-            <span className="ch-result__series-score-num">{opponentScore}</span>
-            <span className="ch-result__series-score-name">{myRole === "opponent" ? "You" : opponentName}</span>
+            <span className="ch-result__series-score-name">YOU</span>
+            <span className="ch-result__series-score-num">{myScore}</span>
           </div>
         </div>
       )}

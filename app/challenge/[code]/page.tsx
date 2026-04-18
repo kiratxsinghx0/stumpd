@@ -63,6 +63,7 @@ export default function ChallengeRoomPage() {
 
   // Standalone game-over state (for single game result + proposal UI)
   const [gameOverData, setGameOverData] = useState<GameOverData | null>(null);
+  const gameOverDataRef = useRef<GameOverData | null>(null);
 
   // Series-over / final result state
   const [seriesOverData, setSeriesOverData] = useState<SeriesOverData | null>(null);
@@ -219,6 +220,7 @@ export default function ChallengeRoomPage() {
 
     // Standalone game over (series_length=1) — show result with proposal buttons
     socket.on("game-over", (data: GameOverData) => {
+      gameOverDataRef.current = data;
       setGameOverData(data);
       setPhaseTracked("result");
 
@@ -269,21 +271,23 @@ export default function ChallengeRoomPage() {
       setIReady(false);
       setOppReady(false);
 
-      const role = myRoleRef.current;
-      const r1Winner = gameOverData?.winner || "draw";
+      let r1Winner: "creator" | "opponent" | "draw" = "draw";
+      if (data.creatorScore > data.opponentScore) r1Winner = "creator";
+      else if (data.opponentScore > data.creatorScore) r1Winner = "opponent";
 
+      const prev = gameOverDataRef.current;
       setRoundOverData({
         roundWinner: r1Winner,
         roundNumber: 1,
         seriesLength: data.seriesLength,
         creatorScore: data.creatorScore,
         opponentScore: data.opponentScore,
-        answer: gameOverData?.answer || "",
-        fullName: gameOverData?.fullName || "",
-        creatorName: gameOverData?.creatorName || "",
-        opponentName: gameOverData?.opponentName || "",
-        creatorBoard: gameOverData?.creatorBoard || [],
-        opponentBoard: gameOverData?.opponentBoard || [],
+        answer: prev?.answer || "",
+        fullName: prev?.fullName || "",
+        creatorName: prev?.creatorName || "",
+        opponentName: prev?.opponentName || "",
+        creatorBoard: prev?.creatorBoard || [],
+        opponentBoard: prev?.opponentBoard || [],
       });
 
       setPhaseTracked("round-result");
@@ -469,8 +473,6 @@ export default function ChallengeRoomPage() {
           initialOpponentGuessCount={initialOpponentGuessCount}
           roundNumber={roundNumber}
           seriesLength={seriesLength}
-          creatorScore={creatorScore}
-          opponentScore={opponentScore}
         />
         {modals}
       </main>
@@ -495,17 +497,22 @@ export default function ChallengeRoomPage() {
             <p className="ch-round-result__answer">
               The answer was <strong>{roundOverData.fullName}</strong>
             </p>
+            {roundOverData.aliasWord && (
+              <p className="ch-round-result__alias">
+                Guessed from hints! The word was <strong>{roundOverData.aliasWord}</strong>
+              </p>
+            )}
           </div>
 
           <div className="ch-round-result__scoreboard">
             <div className="ch-round-result__score-side">
-              <span className="ch-round-result__score-name">{myRole === "creator" ? "You" : roundOverData.creatorName}</span>
-              <span className="ch-round-result__score-num">{creatorScore}</span>
+              <span className="ch-round-result__score-name">{theirName}</span>
+              <span className="ch-round-result__score-num">{myRole === "creator" ? opponentScore : creatorScore}</span>
             </div>
             <span className="ch-round-result__score-dash">—</span>
             <div className="ch-round-result__score-side">
-              <span className="ch-round-result__score-num">{opponentScore}</span>
-              <span className="ch-round-result__score-name">{myRole === "opponent" ? "You" : roundOverData.opponentName}</span>
+              <span className="ch-round-result__score-name">YOU</span>
+              <span className="ch-round-result__score-num">{myRole === "creator" ? creatorScore : opponentScore}</span>
             </div>
           </div>
 
@@ -568,6 +575,7 @@ export default function ChallengeRoomPage() {
             opponentScore={seriesOverData.opponentScore}
             seriesLength={seriesOverData.seriesLength}
             onHome={handleHome}
+            aliasWord={seriesOverData.aliasWord}
           />
           {modals}
         </main>
@@ -590,6 +598,7 @@ export default function ChallengeRoomPage() {
             socket={socketRef.current}
             roomCode={code}
             onSeriesAccepted={handleSeriesAccepted}
+            aliasWord={gameOverData.aliasWord}
           />
           {modals}
         </main>

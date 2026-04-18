@@ -83,14 +83,12 @@ type Props = {
   initialOpponentGuessCount?: number;
   roundNumber?: number;
   seriesLength?: number;
-  creatorScore?: number;
-  opponentScore?: number;
 };
 
 export default function ChallengeGame({
   socket, roomCode, answer, fullName, hints, opponentName, myRole, disconnected,
   previousGuesses, initialOpponentGuessCount,
-  roundNumber = 1, seriesLength = 1, creatorScore = 0, opponentScore = 0,
+  roundNumber = 1, seriesLength = 1,
 }: Props) {
   const shellVpClass = useGameShellViewportClass();
 
@@ -398,14 +396,6 @@ export default function ChallengeGame({
         <div className={shellVpClass ? `game-shell ${shellVpClass}` : "game-shell"}>
 
           <div className="game-shell__top">
-            {seriesLength > 1 && (
-              <div className="ch-game__series-bar">
-                <span className="ch-game__series-label">Round {roundNumber}/{seriesLength}</span>
-                <span className="ch-game__series-score">
-                  {myRole === "creator" ? "You" : opponentName} {creatorScore} — {opponentScore} {myRole === "opponent" ? "You" : opponentName}
-                </span>
-              </div>
-            )}
             <div className="ch-game__opponent-bar">
               <span className="ch-game__opponent-avatar">{opponentName.charAt(0).toUpperCase()}</span>
               <span className="ch-game__opponent-name">{opponentName}</span>
@@ -605,6 +595,11 @@ export default function ChallengeGame({
                   ? <><strong>{fullName}</strong> in {guesses.length} guess{guesses.length !== 1 ? "es" : ""}</>
                   : <>The answer was <strong>{fullName}</strong></>}
               </p>
+              {won && guesses[guesses.length - 1] !== answer && (
+                <p className="ch-game-end__alias">
+                  Guessed from hints! The word was <strong>{answer.toUpperCase()}</strong>
+                </p>
+              )}
             </div>
           </div>
         </div>

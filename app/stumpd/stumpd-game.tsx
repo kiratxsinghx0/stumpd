@@ -108,7 +108,13 @@ function resolvePlayerByName(
 ): IplPlayerRow | null {
   const normalized = token.trim().toLowerCase();
   const matches = playerList.filter((p) => p.name.toLowerCase() === normalized);
-  if (matches.length === 0) return null;
+  if (matches.length === 0) {
+    const fn = disambiguateFullName?.trim();
+    if (fn) {
+      return playerList.find((p) => p.meta.fullName === fn) ?? null;
+    }
+    return null;
+  }
   const fn = disambiguateFullName?.trim();
   if (fn) {
     const hit = matches.find((p) => p.meta.fullName === fn);
@@ -1361,6 +1367,14 @@ export default function Game() {
         return;
       }
 
+      if (hardMode && currentInput !== answer && isSamePlayer(currentInput, answer, playerList, puzzleAnswerFullName, false)) {
+        setMessage("Right player! Guess the exact word 💡");
+        setShaking(true);
+        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+        shakeTimerRef.current = setTimeout(() => { setShaking(false); setMessage(""); }, 1500);
+        return;
+      }
+
       const isAliasGuess = currentInput !== answer && isSamePlayer(currentInput, answer, playerList, puzzleAnswerFullName, hardMode);
       const rowStatuses = isAliasGuess
         ? Array(WORD_LENGTH).fill("correct") as string[]
@@ -1516,9 +1530,9 @@ export default function Game() {
   const defaultKeyBg = useDarkTheme ? "#2a2e3a" : "#d3d6da";
   const defaultKeyColor = useDarkTheme ? "#e0c97f" : "#000";
   const emptyBg = useDarkTheme ? "#1e2230" : "#fff";
-  const emptyBorder = useDarkTheme ? "#3d4555" : "#939699";
+  const emptyBorder = useDarkTheme ? "#3d4555" : "#d3d6da";
   const emptyText = useDarkTheme ? "#e0c97f" : "#000";
-  const filledBorder = useDarkTheme ? "#8b7e4a" : "#666";
+  const filledBorder = useDarkTheme ? "#8b7e4a" : "#888";
 
   return (
     <>
