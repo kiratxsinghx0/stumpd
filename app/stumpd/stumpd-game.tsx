@@ -543,9 +543,6 @@ export default function Game() {
       fetchIplPlayersFromAPI().catch(() => null),
     ]).then(async ([fresh, live, players]) => {
       if (cancelled) return;
-      // #region agent log
-      fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'137623'},body:JSON.stringify({sessionId:'137623',location:'stumpd-game.tsx:538',message:'Promise.all resolved',data:{hasFresh:!!fresh,freshDay:fresh?.day,freshEncoded:fresh?.encoded,hasPlayers:!!players,playerCount:players?.length??0,hasLive:!!live},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
       if (fresh) {
         setPuzzleError(false);
         setPuzzleData((prev) => {
@@ -664,9 +661,6 @@ export default function Game() {
       const result = playerToGuess
         ? resolvePlayerByName(playerToGuess, playerList, puzzleAnswerFullName)
         : null;
-      // #region agent log
-      fetch('http://127.0.0.1:7615/ingest/c641f394-8238-49b5-9ef6-2a0c0c5d4763',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'137623'},body:JSON.stringify({sessionId:'137623',location:'stumpd-game.tsx:660',message:'targetPlayer resolved',data:{playerToGuess,playerListLen:playerList.length,puzzleAnswerFullName,found:!!result,resultName:result?.name},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
       return result;
     },
     [playerList, playerToGuess, puzzleAnswerFullName]
