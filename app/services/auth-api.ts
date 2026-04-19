@@ -1,3 +1,5 @@
+import { getDeviceId } from "../utils/device-id";
+
 const LS_TOKEN_KEY = "stumpd_auth_token";
 const LS_USER_KEY = "stumpd_auth_user";
 
@@ -180,7 +182,7 @@ export async function postGameResult(payload: GameResultPayload): Promise<UserSt
   try {
     const res = await fetch("/api/user/result", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId(), ...authHeaders() },
       body: JSON.stringify(payload),
     });
     const json = await res.json();
@@ -292,7 +294,7 @@ export async function postHardModeResult(payload: GameResultPayload): Promise<vo
   try {
     const res = await fetch("/api/user/hard-mode/result", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId(), ...authHeaders() },
       body: JSON.stringify(payload),
     });
     if (res.status === 401) {
@@ -306,16 +308,12 @@ export async function postHardModeResult(payload: GameResultPayload): Promise<vo
 /* ── Godmode & Preferences ── */
 
 const LS_GODMODE_TS = "stumpdpuzzle_hmChampionTs";
-const LS_HARD_MODE_PREF = "stumpdpuzzle_hardMode";
 
 function applyServerPrefs(data: { godmode_activated_at?: number | null; hard_mode_pref?: boolean }) {
   if (typeof window === "undefined") return;
   try {
     if (data.godmode_activated_at != null) {
       localStorage.setItem(LS_GODMODE_TS, String(data.godmode_activated_at));
-    }
-    if (data.hard_mode_pref != null) {
-      localStorage.setItem(LS_HARD_MODE_PREF, data.hard_mode_pref ? "1" : "0");
     }
   } catch { /* quota / private mode */ }
 }
@@ -398,7 +396,7 @@ export async function postArchiveResult(puzzleDay: number, won: boolean): Promis
   try {
     await fetch("/api/user/archive/result", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId(), ...authHeaders() },
       body: JSON.stringify({ puzzle_day: puzzleDay, won }),
     });
   } catch { /* non-critical */ }

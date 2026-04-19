@@ -27,6 +27,7 @@ import LeaderboardModal from "../../components/leaderboard-modal";
 import StumpdHowToPlay from "../../stumpd/stumpd-how-to-play";
 import { fetchPuzzleToday, fetchHardModePuzzleToday } from "../../services/ipl-api";
 import { isLoggedIn, getStoredUser } from "../../services/auth-api";
+import { getDeviceId } from "../../utils/device-id";
 
 type Phase = "loading" | "name-prompt" | "lobby" | "countdown" | "game" | "round-result" | "result" | "error";
 
@@ -366,7 +367,7 @@ export default function ChallengeRoomPage() {
     });
 
     if (!socket.connected) socket.connect();
-    socket.emit("join-room", { roomCode: code, playerName: name });
+    socket.emit("join-room", { roomCode: code, playerName: name, deviceId: getDeviceId() });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 

@@ -247,8 +247,6 @@ const LS_UNLOCKED_HINTS_KEY = "stumpdpuzzle_unlockedHints";
 const LS_TIMER_ELAPSED_KEY = "stumpdpuzzle_timerElapsed";
 const LS_TIMER_STARTED_KEY = "stumpdpuzzle_timerStarted";
 const LS_USED_TRIVIA_KEY = "stumpdpuzzle_usedTriviaIndices";
-const LS_HARD_MODE_KEY = "stumpdpuzzle_hardMode";
-
 const LS_HARD_GUESS_KEY = "stumpdpuzzle_hard_guess";
 const LS_HARD_PUZZLE_ID_KEY = "stumpdpuzzle_hard_puzzleId";
 const LS_HARD_TIMER_ELAPSED_KEY = "stumpdpuzzle_hard_timerElapsed";
@@ -523,10 +521,7 @@ export default function Game() {
   const [retrying, setRetrying] = useState(false);
   const [hardMode, setHardMode] = useState(() => {
     if (isArchiveMode) return false;
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem(LS_HARD_MODE_KEY) === "1";
-    } catch { return false; }
+    return searchParams.get("mode") === "hard";
   });
 
   useEffect(() => {
@@ -619,6 +614,7 @@ export default function Game() {
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
   const [shareDismissed, setShareDismissed] = useState(false);
+  const [guessesLoaded, setGuessesLoaded] = useState(false);
   const [stats, setStats] = useState<GameStats>(DEFAULT_STUMPD_STATS);
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [lastGameResult, setLastGameResult] = useState<GameResultPayload | null>(null);
@@ -639,6 +635,8 @@ export default function Game() {
   const [godmodeReentry, setGodmodeReentry] = useState(false);
   const [showGodmodeLoginPrompt, setShowGodmodeLoginPrompt] = useState(false);
   const [godmodeActive, setGodmodeActive] = useState(false);
+  const [entryFlip, setEntryFlip] = useState(false);
+  const shouldEntryFlipRef = useRef(!isArchiveMode);
   const [godmodeHoursLeft, setGodmodeHoursLeft] = useState(0);
   const [userInitial, setUserInitial] = useState("");
   const [authVersion, setAuthVersion] = useState(0);
@@ -697,9 +695,31 @@ export default function Game() {
     }
   }, []);
 
+  useLayoutEffect(() => {
+    if (isArchiveMode) return;
+    const active = isGodmodeActive();
+    if (active) {
+      if (!document.documentElement.classList.contains("godmode-early")) {
+        document.documentElement.classList.add("godmode-early");
+        document.documentElement.style.backgroundColor = "#1a1a2e";
+        document.documentElement.style.colorScheme = "dark";
+      }
+      setGodmodeActive(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
-    refreshGodmodeState({ triggerReentry: !isArchiveMode });
+    refreshGodmodeState();
   }, [refreshGodmodeState]);
+
+  useEffect(() => {
+    if (!entryFlip) return;
+    const t = setTimeout(() => {
+      setEntryFlip(false);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [entryFlip]);
 
   useEffect(() => {
     if (!godmodeActive) return;
@@ -717,13 +737,25 @@ export default function Game() {
   useLayoutEffect(() => {
     if (godmodeActive && !showGodmodeUnlock && !isArchiveMode) {
       document.body.classList.add("body--godmode");
-    } else if (!godmodeActive || isArchiveMode) {
-      document.body.classList.remove("body--godmode");
       document.documentElement.classList.remove("godmode-early");
       document.documentElement.style.removeProperty("background-color");
       document.documentElement.style.removeProperty("color-scheme");
+    } else if (!godmodeActive || isArchiveMode) {
+      document.body.classList.remove("body--godmode");
+      if (!isGodmodeActive() || isArchiveMode) {
+        document.documentElement.classList.remove("godmode-early");
+        document.documentElement.style.removeProperty("background-color");
+        document.documentElement.style.removeProperty("color-scheme");
+      }
     }
-    return () => { document.body.classList.remove("body--godmode"); };
+    return () => {
+      document.body.classList.remove("body--godmode");
+      if (isGodmodeActive()) {
+        document.documentElement.classList.add("godmode-early");
+        document.documentElement.style.backgroundColor = "#1a1a2e";
+        document.documentElement.style.colorScheme = "dark";
+      }
+    };
   }, [godmodeActive, showGodmodeUnlock]);
 
   useEffect(() => {
@@ -966,14 +998,12 @@ export default function Game() {
   }, [wrongGuessCount]);
 
   useEffect(() => {
-    if (!playerToGuess || !currentGameId) return;
+    if (!playerToGuess || !currentGameId || !answer) return;
     let cancelled = false;
 
-    let isHardRestore = false;
-    if (!isArchiveMode) {
-      try { isHardRestore = localStorage.getItem(LS_HARD_MODE_KEY) === "1"; } catch { /* */ }
-    }
+    const isHardRestore = !isArchiveMode && hardMode;
 
+    setGuessesLoaded(false);
     setGuesses([]);
     setStatuses([]);
     setLetterStatus({});
@@ -1007,6 +1037,7 @@ export default function Game() {
         elapsedSecondsRef.current = archiveData.timerElapsed;
       }
       if (archiveData?.timerStarted) setTimerStarted(true);
+      setGuessesLoaded(true);
       return;
     }
 
@@ -1027,6 +1058,10 @@ export default function Game() {
     } catch { /* */ }
 
     function applyLoaded(loaded: { guesses: string[]; statuses: string[][] }, isHard: boolean) {
+      if (shouldEntryFlipRef.current && loaded.guesses.length > 0) {
+        shouldEntryFlipRef.current = false;
+        setEntryFlip(true);
+      }
       const last = loaded.guesses[loaded.guesses.length - 1];
       const wasStoredWin = isSamePlayer(last, answer, playerList, puzzleAnswerFullName, isHard);
       const gameDone = wasStoredWin || loaded.guesses.length === MAX_GUESSES;
@@ -1036,15 +1071,17 @@ export default function Game() {
       setLetterStatus(letterStatusFromRows(loaded.guesses, loaded.statuses));
       if (dismissedShare) setShareDismissed(true);
       if (wasStoredWin && last !== answer) setAliasWin(true);
+      setGuessesLoaded(true);
     }
 
     const local = readStoredGuesses(currentGameId, answer, playerList, puzzleAnswerFullName, isHardRestore);
     const localCompleted = isLocalGameCompleted(currentGameId, isHardRestore);
 
-    if (!isLoggedIn()) {
-      if (local) applyLoaded(local, isHardRestore);
-      return;
-    }
+    // Apply local data synchronously first so the grid is never empty on reload
+    if (local) applyLoaded(local, isHardRestore);
+    else setGuessesLoaded(true);
+
+    if (!isLoggedIn()) return;
 
     function pushLocalToDb() {
       const progress = readCurrentGameProgress(isHardRestore, Number(currentGameId));
@@ -1100,11 +1137,13 @@ export default function Game() {
       }
     }).catch(() => {
       if (local) applyLoaded(local, isHardRestore);
+    }).finally(() => {
+      if (!cancelled) setGuessesLoaded(true);
     });
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerToGuess, currentGameId, answer, playerList, puzzleAnswerFullName, authVersion]);
+  }, [playerToGuess, currentGameId, answer, playerList, puzzleAnswerFullName, authVersion, hardMode]);
 
   useEffect(() => {
     if (!timerStarted || gameOver) return;
@@ -1518,6 +1557,15 @@ export default function Game() {
   }
 
   const useDarkTheme = godmodeActive && !isArchiveMode;
+
+  if (!guessesLoaded) {
+    return (
+      <div className={`game-page__content${useDarkTheme ? " godmode-theme" : ""}`}>
+        <PageHeader timerDisplay={formatGameTimer(elapsedSeconds)} logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={useDarkTheme} godmodeHoursLeft={useDarkTheme ? godmodeHoursLeft : 0} userInitial={userInitial} hardMode={hardMode} />
+      </div>
+    );
+  }
+
   const activeColorMap = useDarkTheme ? GODMODE_STATUS_COLOR : STATUS_COLOR;
   const defaultKeyBg = useDarkTheme ? "#2a2e3a" : "#d3d6da";
   const defaultKeyColor = useDarkTheme ? "#e0c97f" : "#000";
@@ -1629,7 +1677,9 @@ export default function Game() {
                     bgColor     = activeColorMap[statuses[rowIndex][colIndex]];
                     borderColor = bgColor;
                     textColor   = "#fff";
-                    if (winBounceRow === rowIndex) {
+                    if (entryFlip) {
+                      tileClass = "tile game-tile entry-flip";
+                    } else if (winBounceRow === rowIndex) {
                       tileClass = "tile game-tile game-tile--win-bounce";
                     }
 
@@ -1662,12 +1712,19 @@ export default function Game() {
                         borderColor,
                         backgroundColor: bgColor,
                         color: textColor,
-                        "--tile-bg":     isThisFlipping && flippingStatuses[colIndex]
-                                           ? activeColorMap[flippingStatuses[colIndex]] : emptyBg,
-                        "--tile-border": isThisFlipping && flippingStatuses[colIndex]
-                                           ? activeColorMap[flippingStatuses[colIndex]] : filledBorder,
+                        "--tile-bg":     (isThisFlipping && flippingStatuses[colIndex])
+                                           ? activeColorMap[flippingStatuses[colIndex]]
+                                           : (entryFlip && isCommitted)
+                                             ? bgColor : emptyBg,
+                        "--tile-border": (isThisFlipping && flippingStatuses[colIndex])
+                                           ? activeColorMap[flippingStatuses[colIndex]]
+                                           : (entryFlip && isCommitted)
+                                             ? borderColor : filledBorder,
                         ...(winBounceRow === rowIndex && isCommitted
                           ? { "--win-bounce-index": String(colIndex) }
+                          : {}),
+                        ...(entryFlip && isCommitted
+                          ? { animationDelay: `${(rowIndex * WORD_LENGTH + colIndex) * 20}ms` }
                           : {}),
                       } as React.CSSProperties & Record<string, string>}
                     >
@@ -1798,9 +1855,8 @@ export default function Game() {
             <ReminderPrompt variant="compact" />
           )}
         </div>
-      ) : (
+      ) : guessesLoaded ? (
       <div className="game-page__keyboard">
-        {/* KEYBOARD — structure aligned with NYT Wordle (row + half-key spacers on middle row) */}
         <div className="game-keyboard" role="group" aria-label="Keyboard">
           <div className="game-keyboard-row game-keyboard-row--top">
             {"qwertyuiop".split("").map(l => {
@@ -1863,7 +1919,7 @@ export default function Game() {
           </div>
         </div>
       </div>
-      )}
+      ) : null}
 
       <GuessHistoryModal
         open={showHintHistory}
@@ -1937,14 +1993,12 @@ export default function Game() {
         gameResultPayload={lastGameResult}
         onAuthSuccess={async () => {
           setShowGodmodeLoginPrompt(false);
-          try { localStorage.setItem(LS_HARD_MODE_KEY, hardMode ? "1" : "0"); } catch {}
           await refreshGodmodeState();
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
 
           try { await postAllPendingResults(); } catch { /* non-critical */ }
 
-          // Save game progress for both modes using each mode's own puzzle day
           try {
             const normalDay = localStorage.getItem(LS_GAME_ID_KEY);
             const hardDay = localStorage.getItem(LS_HARD_GAME_ID_KEY);
@@ -1975,6 +2029,7 @@ export default function Game() {
         onClose={() => setShowSettings(false)}
         hardMode={hardMode}
         hideHardMode={isArchiveMode}
+        gameResultPayload={lastGameResult}
         onToggleHardMode={(enabled: boolean, origin?: ToggleOrigin) => {
           if (guesses.length > 0 && !won && !lost) return;
           if (enabled && origin) {
@@ -1982,14 +2037,11 @@ export default function Game() {
             setHmTransition(true);
           }
           setHardMode(enabled);
-          try { localStorage.setItem(LS_HARD_MODE_KEY, enabled ? "1" : "0"); } catch { /* */ }
         }}
         canEnableHardMode={(guesses.length === 0 || gameOver) && !isArchiveMode}
         canDisableHardMode={(guesses.length === 0 || gameOver) && !isArchiveMode}
         puzzleDay={puzzleData?.day}
         onAuthChange={async () => {
-          try { localStorage.setItem(LS_HARD_MODE_KEY, hardMode ? "1" : "0"); } catch {}
-
           setAuthVersion(v => v + 1);
           fetchLiveStats().then(setLiveStats).catch(() => {});
 
@@ -2043,11 +2095,6 @@ export default function Game() {
           todayRank={todayRank}
           hardMode={hardMode}
           onAuthChange={async () => {
-            // Re-assert the current mode in localStorage BEFORE bumping
-            // authVersion, so the restore effect reads the correct value
-            // (applyServerPrefs inside register/login may have overwritten it).
-            try { localStorage.setItem(LS_HARD_MODE_KEY, hardMode ? "1" : "0"); } catch {}
-
             setAuthVersion(v => v + 1);
             fetchLiveStats().then(setLiveStats).catch(() => {});
 

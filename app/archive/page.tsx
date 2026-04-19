@@ -44,6 +44,13 @@ export default function ArchivePage() {
   const [playedMap, setPlayedMap] = useState<Map<number, boolean>>(new Map());
 
   useEffect(() => {
+    document.body.classList.remove("body--godmode");
+    document.documentElement.classList.remove("godmode-early");
+    document.documentElement.style.removeProperty("background-color");
+    document.documentElement.style.removeProperty("color-scheme");
+  }, []);
+
+  useEffect(() => {
     const localPlayed = getArchivePlayedDays();
     setPlayedMap(localPlayed);
 

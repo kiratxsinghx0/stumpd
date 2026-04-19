@@ -1,4 +1,5 @@
 import type { LiveStats } from "../components/games";
+import { getDeviceId } from "../utils/device-id";
 
 export type { LiveStats };
 
@@ -43,7 +44,7 @@ export async function incrementLiveStats(
     await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ puzzle_day: puzzleDay, won, num_guesses: numGuesses }),
+      body: JSON.stringify({ puzzle_day: puzzleDay, won, num_guesses: numGuesses, device_id: getDeviceId() }),
     });
 
     if (typeof window !== "undefined") {
@@ -72,7 +73,7 @@ export async function incrementGameStart(
     await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ puzzle_day: puzzleDay }),
+      body: JSON.stringify({ puzzle_day: puzzleDay, device_id: getDeviceId() }),
     });
 
     if (typeof window !== "undefined") {

@@ -82,7 +82,6 @@ export default function PageHeader({
         <path d="M40 10 L68 23 C68 23 70 54 40 84 C10 54 12 23 12 23 Z" fill="url(#shieldInner)" />
         <text x="40" y="58" textAnchor="middle" fill="#f5d061" fontSize="34" fontWeight="800" fontFamily="system-ui, -apple-system, sans-serif">{userInitial || "G"}</text>
       </svg>
-      <span className="godmode-crest__tagline">Godmode Activated</span>
     </div>
   ) : null;
 
@@ -215,103 +214,51 @@ export default function PageHeader({
                 />
               </svg>
             </Link>
-            {showHowToPlay ? (
-              <button
-                type="button"
-                className={`page-header-icon-btn page-header-leaderboard-btn${lbOpen ? " page-header-leaderboard-btn--active" : ""}`}
-                aria-label="Leaderboard"
-                onClick={() => dispatchOpenLeaderboard()}
+            <button
+              type="button"
+              className={`page-header-icon-btn page-header-leaderboard-btn${lbOpen ? " page-header-leaderboard-btn--active" : ""}`}
+              aria-label="Leaderboard"
+              onClick={() => dispatchOpenLeaderboard()}
+            >
+              <svg
+                className="page-header-icon-btn__glyph"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
               >
-                <svg
-                  className="page-header-icon-btn__glyph"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden
-                >
-                  <rect x="3" y="13" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                  <rect x="9.5" y="5" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                  <rect x="16" y="9" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
-              </button>
-            ) : null}
-            {showHowToPlay ? (
-              <button
-                type="button"
-                className="page-header-icon-btn page-header-howtoplay-btn"
-                aria-label="How to play"
-                onClick={() => dispatchOpenHowToPlay()}
+                <rect x="3" y="13" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                <rect x="9.5" y="5" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                <rect x="16" y="9" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="page-header-icon-btn page-header-howtoplay-btn"
+              aria-label="How to play"
+              onClick={() => dispatchOpenHowToPlay()}
+            >
+              <svg
+                className="page-header-icon-btn__glyph"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
               >
-                <svg
-                  className="page-header-icon-btn__glyph"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden
-                >
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                  <path
-                    d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.5.3-.7.6-.7 1.1V14"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="12" cy="17" r="1" fill="currentColor" />
-                </svg>
-              </button>
-            ) : (
-              <>
-              <button
-                type="button"
-                className={`page-header-icon-btn page-header-leaderboard-btn${lbOpen ? " page-header-leaderboard-btn--active" : ""}`}
-                aria-label="Leaderboard"
-                onClick={() => dispatchOpenLeaderboard()}
-              >
-                <svg
-                  className="page-header-icon-btn__glyph"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden
-                >
-                  <rect x="3" y="13" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                  <rect x="9.5" y="5" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                  <rect x="16" y="9" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="page-header-icon-btn page-header-howtoplay-btn"
-                aria-label="How to play"
-                onClick={() => dispatchOpenHowToPlay()}
-              >
-                <svg
-                  className="page-header-icon-btn__glyph"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden
-                >
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                  <path
-                    d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.5.3-.7.6-.7 1.1V14"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="12" cy="17" r="1" fill="currentColor" />
-                </svg>
-              </button>
-              </>
-            )}
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                <path
+                  d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.5.3-.7.6-.7 1.1V14"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle cx="12" cy="17" r="1" fill="currentColor" />
+              </svg>
+            </button>
           </nav>
         </div>
       </div>

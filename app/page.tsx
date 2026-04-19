@@ -222,9 +222,6 @@ export default function HomePage() {
                 href={mode.href}
                 className={`hub-card hub-card--${mode.id}`}
                 style={{ animationDelay: `${i * 0.06}s` }}
-                onClick={() => {
-                  try { localStorage.setItem("stumpdpuzzle_hardMode", "0"); } catch {}
-                }}
               >
                 {inner}
               </Link>
@@ -249,7 +246,6 @@ export default function HomePage() {
         originX={hmTransOrigin.x}
         originY={hmTransOrigin.y}
         onMidpoint={() => {
-          try { localStorage.setItem("stumpdpuzzle_hardMode", "1"); } catch {}
           router.push("/stumpd?mode=hard");
         }}
         onComplete={() => setHmTransition(false)}

@@ -172,8 +172,8 @@ body {
   body {
     padding-top: max(4px, env(safe-area-inset-top, 0px)) !important;
     padding-bottom: max(0px, env(safe-area-inset-bottom, 0px)) !important;
-    padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
-    padding-right: max(4px, env(safe-area-inset-right, 0px)) !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
   }
 }
 
@@ -202,6 +202,9 @@ main {
   position: sticky;
   top: 0;
   z-index: 100;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  width: calc(100% + 2rem);
 }
 
 /* Force white header on hub page even when godmode-early is active */
@@ -224,6 +227,34 @@ html.godmode-early .hub-page > .page-header .page-header-icon-btn {
 html .hub-page > .page-header .page-title-accent,
 html.godmode-early .hub-page > .page-header .page-title-accent {
   background: linear-gradient(90deg, #2d6a4f, #059669, #2d6a4f) !important;
+}
+
+/* Force white header on archive page even when godmode-early is active */
+html .archive-page > .page-header,
+html.godmode-early .archive-page > .page-header {
+  background: linear-gradient(180deg, #ffffff 0%, #f8faf9 100%) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.02) !important;
+}
+html .archive-page > .page-header .page-header-bar,
+html.godmode-early .archive-page > .page-header .page-header-bar {
+  background-color: transparent !important;
+}
+html .archive-page > .page-header .page-header-icon-btn,
+html.godmode-early .archive-page > .page-header .page-header-icon-btn {
+  color: #111 !important;
+}
+html .archive-page > .page-header .page-title-accent,
+html.godmode-early .archive-page > .page-header .page-title-accent {
+  background: linear-gradient(90deg, #2d6a4f, #059669, #2d6a4f) !important;
+}
+
+/* Force archive page background to stay light even in godmode */
+html.godmode-early .archive-page {
+  background: #fff !important;
+  color: #000 !important;
 }
 
 /* Force hub page background to stay light even in godmode */
@@ -663,15 +694,11 @@ button:not(.game-key):not(.game-key-wide):active {
 
 /* Page header â€” edge-to-edge without 100vw (100vw often causes a horizontal scrollbar) */
 .page-header {
-  --bleed-l: max(12px, env(safe-area-inset-left, 0px));
-  --bleed-r: max(12px, env(safe-area-inset-right, 0px));
   --header-bar-pad-y: 0.28rem;
   --header-logo-max-h: clamp(32px, 9.5vw, 52px);
   --header-icon-btn: clamp(40px, 10vw, 46px);
   --header-icon-glyph: clamp(20px, 5vw, 24px);
-  margin-left: calc(-1 * var(--bleed-l));
-  margin-right: calc(-1 * var(--bleed-r));
-  width: calc(100% + var(--bleed-l) + var(--bleed-r));
+  width: 100%;
   max-width: none;
   background: linear-gradient(180deg, #ffffff 0%, #f8faf9 100%);
   box-shadow:
@@ -7653,12 +7680,16 @@ a.page-header-icon-btn {
   padding: 5px 12px;
   background: linear-gradient(90deg, #c9a227, #f5d061, #c9a227);
   background-size: 200% 100%;
-  animation: godmode-shimmer 4s ease infinite;
+  animation: godmode-shimmer 4s ease infinite, godmode-strip-in 0.4s ease both;
   font-size: 0.7rem;
   font-weight: 700;
   color: #3a2a00;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+@keyframes godmode-strip-in {
+  from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
+  to   { opacity: 1; max-height: 40px; }
 }
 
 .godmode-strip__crown {
@@ -7902,6 +7933,22 @@ html.godmode-early .page-title-accent {
   background: linear-gradient(90deg, #d97706 0%, #f59e0b 30%, #fbbf24 60%, #fcd34d 85%, #fde68a 100%) !important;
   background-size: 200% 100%;
 }
+html.godmode-early .page-header-timer {
+  background: #1e293b;
+  border-color: #334155;
+}
+html.godmode-early .page-header-timer__icon {
+  color: #94a3b8;
+}
+html.godmode-early .page-header-timer__time {
+  color: #e2e8f0;
+}
+html.godmode-early .page-header-icon-btn {
+  color: #94a3b8;
+}
+html.godmode-early .page-title-logo-link {
+  opacity: 0;
+}
 html.godmode-early .game-page,
 html.godmode-early .game-page__content {
   background-color: #1a1a2e;
@@ -7923,6 +7970,26 @@ body.body--godmode {
 .godmode-theme {
   background-color: #1a1a2e;
   color: #e2e8f0;
+}
+
+@keyframes entryFlip {
+  0%   { transform: scaleY(1); background-color: var(--flip-from-bg); color: transparent; border-color: var(--flip-from-border); }
+  40%  { transform: scaleY(0); background-color: var(--flip-from-bg); color: transparent; border-color: var(--flip-from-border); }
+  60%  { transform: scaleY(0); background-color: var(--tile-bg); color: var(--flip-text); border-color: var(--tile-border); }
+  100% { transform: scaleY(1); background-color: var(--tile-bg); color: var(--flip-text); border-color: var(--tile-border); }
+}
+
+.tile.entry-flip {
+  --flip-from-bg: #fff;
+  --flip-from-border: #d3d6da;
+  --flip-text: #fff;
+  animation: entryFlip 0.4s ease both;
+}
+
+.godmode-theme .tile.entry-flip {
+  --flip-from-bg: #1e2230;
+  --flip-from-border: #3d4555;
+  --flip-text: #fff;
 }
 
 .godmode-theme .page-header {
