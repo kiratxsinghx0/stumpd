@@ -20,7 +20,8 @@ type ProposalState =
   | "proposing"
   | "waiting"
   | "received"
-  | "declined";
+  | "declined"
+  | "closed";
 
 type Props = {
   winner: "creator" | "opponent" | "draw";
@@ -37,6 +38,8 @@ type Props = {
   roomCode?: string;
   onSeriesAccepted?: () => void;
   aliasWord?: string | null;
+  answerFullName?: string;
+  answerWord?: string;
 };
 
 export default function ChallengeResult({
@@ -49,6 +52,8 @@ export default function ChallengeResult({
   socket, roomCode,
   onSeriesAccepted,
   aliasWord,
+  answerFullName,
+  answerWord,
 }: Props) {
   const iWon = winner === myRole;
   const isDraw = winner === "draw";
@@ -61,6 +66,7 @@ export default function ChallengeResult({
   const [proposal, setProposal] = useState<ProposalState>("idle");
   const [proposedLength, setProposedLength] = useState(0);
   const [incomingProposal, setIncomingProposal] = useState<SeriesProposedData | null>(null);
+  const declineCountRef = useRef(0);
 
   useEffect(() => () => { if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current); }, []);
 
@@ -78,8 +84,13 @@ export default function ChallengeResult({
     };
 
     const onSeriesDeclined = () => {
-      setProposal("declined");
-      setTimeout(() => setProposal("idle"), 3000);
+      declineCountRef.current += 1;
+      if (declineCountRef.current >= 2) {
+        setProposal("closed");
+      } else {
+        setProposal("declined");
+        setTimeout(() => setProposal("idle"), 3000);
+      }
     };
 
     socket.on("proposal-sent", onProposalSent);
@@ -109,7 +120,12 @@ export default function ChallengeResult({
   const handleDecline = useCallback(() => {
     if (!socket || !roomCode) return;
     socket.emit("decline-series", { roomCode });
-    setProposal("idle");
+    declineCountRef.current += 1;
+    if (declineCountRef.current >= 2) {
+      setProposal("closed");
+    } else {
+      setProposal("idle");
+    }
     setIncomingProposal(null);
   }, [socket, roomCode]);
 
@@ -201,6 +217,11 @@ export default function ChallengeResult({
         <div className="ch-result__banner-text">
           <h2 className="ch-result__heading">{headingText}</h2>
           <p className="ch-result__sub">{subText}</p>
+          {answerFullName && (
+            <p className="ch-result__answer">
+              The answer was <strong>{answerFullName}</strong>
+            </p>
+          )}
           {aliasWord && (
             <p className="ch-result__alias">
               Guessed from hints! The word was <strong>{aliasWord}</strong>
@@ -304,7 +325,7 @@ export default function ChallengeResult({
           )}
         </div>
 
-        {canPropose && (
+        {canPropose && proposal !== "closed" && (
           <div className="ch-result__proposal-area">
             {proposal === "idle" && (
               <div className="ch-result__series-buttons">

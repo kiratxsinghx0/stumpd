@@ -68,6 +68,9 @@ export default function ChallengeRoomPage() {
   // Series-over / final result state
   const [seriesOverData, setSeriesOverData] = useState<SeriesOverData | null>(null);
 
+  // Signals ChallengeGame that the server ended the round (opponent may have won first)
+  const [serverGameOver, setServerGameOver] = useState(false);
+
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [puzzleDay, setPuzzleDay] = useState<number | undefined>(undefined);
@@ -76,11 +79,22 @@ export default function ChallengeRoomPage() {
   const socketRef = useRef(getSocket());
   const joinedRef = useRef(false);
   const phaseRef = useRef<Phase>("loading");
+  const pendingTransitionRef = useRef<Phase | null>(null);
+  const gameAnimationsDoneRef = useRef(false);
 
   const setPhaseTracked = useCallback((p: Phase) => {
     phaseRef.current = p;
     setPhase(p);
   }, []);
+
+  const handleGameAnimationsComplete = useCallback(() => {
+    gameAnimationsDoneRef.current = true;
+    const target = pendingTransitionRef.current;
+    if (target) {
+      pendingTransitionRef.current = null;
+      setPhaseTracked(target);
+    }
+  }, [setPhaseTracked]);
 
   useEffect(() => {
     document.body.classList.remove("body--godmode");
@@ -191,6 +205,9 @@ export default function ChallengeRoomPage() {
       setOpponentScore(data.opponentScore || 0);
       setIReady(false);
       setOppReady(false);
+      gameAnimationsDoneRef.current = false;
+      pendingTransitionRef.current = null;
+      setServerGameOver(false);
 
       if (data.previousGuesses?.length) {
         setPreviousGuesses(data.previousGuesses);
@@ -218,11 +235,11 @@ export default function ChallengeRoomPage() {
       }
     });
 
-    // Standalone game over (series_length=1) — show result with proposal buttons
+    // Standalone game over (series_length=1) — store data, transition when animations done
     socket.on("game-over", (data: GameOverData) => {
       gameOverDataRef.current = data;
       setGameOverData(data);
-      setPhaseTracked("result");
+      setServerGameOver(true);
 
       const role = myRoleRef.current;
       saveChallengeToHistory({
@@ -231,9 +248,15 @@ export default function ChallengeRoomPage() {
         result: data.winner === "draw" ? "draw" : data.winner === role ? "won" : "lost",
         date: new Date().toISOString(),
       });
+
+      if (gameAnimationsDoneRef.current) {
+        setPhaseTracked("result");
+      } else {
+        pendingTransitionRef.current = "result";
+      }
     });
 
-    // Mid-series round over
+    // Mid-series round over — store data, transition when animations done
     socket.on("round-over", (data: RoundOverData) => {
       setRoundOverData(data);
       setCreatorScore(data.creatorScore);
@@ -241,17 +264,23 @@ export default function ChallengeRoomPage() {
       setRoundNumber(data.roundNumber);
       setIReady(false);
       setOppReady(false);
-      setPhaseTracked("round-result");
+      setServerGameOver(true);
+
+      if (gameAnimationsDoneRef.current) {
+        setPhaseTracked("round-result");
+      } else {
+        pendingTransitionRef.current = "round-result";
+      }
     });
 
-    // Final series over
+    // Final series over — store data, transition when animations done
     socket.on("series-over", (data: SeriesOverData) => {
       setSeriesOverData(data);
       setGameOverData(null);
       setCreatorScore(data.creatorScore);
       setOpponentScore(data.opponentScore);
       setSeriesLength(data.seriesLength);
-      setPhaseTracked("result");
+      setServerGameOver(true);
 
       const role = myRoleRef.current;
       saveChallengeToHistory({
@@ -260,6 +289,12 @@ export default function ChallengeRoomPage() {
         result: data.seriesWinner === "draw" ? "draw" : data.seriesWinner === role ? "won" : "lost",
         date: new Date().toISOString(),
       });
+
+      if (gameAnimationsDoneRef.current) {
+        setPhaseTracked("result");
+      } else {
+        pendingTransitionRef.current = "result";
+      }
     });
 
     // Series accepted — transition to round-result (scoreboard + ready)
@@ -473,6 +508,8 @@ export default function ChallengeRoomPage() {
           initialOpponentGuessCount={initialOpponentGuessCount}
           roundNumber={roundNumber}
           seriesLength={seriesLength}
+          onAnimationsComplete={handleGameAnimationsComplete}
+          serverGameOver={serverGameOver}
         />
         {modals}
       </main>
@@ -576,6 +613,8 @@ export default function ChallengeRoomPage() {
             seriesLength={seriesOverData.seriesLength}
             onHome={handleHome}
             aliasWord={seriesOverData.aliasWord}
+            answerFullName={seriesOverData.fullName}
+            answerWord={seriesOverData.answer}
           />
           {modals}
         </main>
@@ -599,6 +638,8 @@ export default function ChallengeRoomPage() {
             roomCode={code}
             onSeriesAccepted={handleSeriesAccepted}
             aliasWord={gameOverData.aliasWord}
+            answerFullName={gameOverData.fullName}
+            answerWord={gameOverData.answer}
           />
           {modals}
         </main>

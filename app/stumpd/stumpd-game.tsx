@@ -1367,14 +1367,6 @@ export default function Game() {
         return;
       }
 
-      if (hardMode && currentInput !== answer && isSamePlayer(currentInput, answer, playerList, puzzleAnswerFullName, false)) {
-        setMessage("Right player! Guess the exact word 💡");
-        setShaking(true);
-        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
-        shakeTimerRef.current = setTimeout(() => { setShaking(false); setMessage(""); }, 1500);
-        return;
-      }
-
       const isAliasGuess = currentInput !== answer && isSamePlayer(currentInput, answer, playerList, puzzleAnswerFullName, hardMode);
       const rowStatuses = isAliasGuess
         ? Array(WORD_LENGTH).fill("correct") as string[]
@@ -1447,7 +1439,7 @@ export default function Game() {
     ];
     return (
       <div className={`game-page__content${godmodeActive && !isArchiveMode ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} />
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} hardMode={hardMode} />
         <div className="game-error">
           <div className="game-error__ghost-grid" aria-hidden="true">
             {ghostColors.map((row, ri) => (
@@ -1490,7 +1482,7 @@ export default function Game() {
   if (!puzzleData || (playersLoading && playerList.length === 0)) {
     return (
       <div className={`game-page__content${godmodeActive && !isArchiveMode ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} />
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} hardMode={hardMode} />
         <div className="game-loading">
           <div className="game-loading__spinner" />
           <p className="game-loading__text">Loading puzzle…</p>
@@ -1502,7 +1494,7 @@ export default function Game() {
   if (!targetPlayer && !playersLoading) {
     return (
       <div className={`game-page__content${godmodeActive && !isArchiveMode ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} />
+        <PageHeader timerDisplay="00:00" logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={godmodeActive && !isArchiveMode} godmodeHoursLeft={godmodeActive && !isArchiveMode ? godmodeHoursLeft : 0} userInitial={userInitial} hardMode={hardMode} />
         <div className="game-error">
           <div className="game-error__card">
             <div className="game-error__icon-wrap">
@@ -1537,7 +1529,7 @@ export default function Game() {
   return (
     <>
       <div className={`game-page__content${useDarkTheme ? " godmode-theme" : ""}`}>
-        <PageHeader timerDisplay={formatGameTimer(elapsedSeconds)} logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={useDarkTheme} godmodeHoursLeft={useDarkTheme ? godmodeHoursLeft : 0} userInitial={userInitial} />
+        <PageHeader timerDisplay={formatGameTimer(elapsedSeconds)} logoSrc="/stumpd-logo.png" logoAlt="Stumpd" isGodmode={useDarkTheme} godmodeHoursLeft={useDarkTheme ? godmodeHoursLeft : 0} userInitial={userInitial} hardMode={hardMode} />
         <div className={shellVpClass ? `game-shell ${shellVpClass}` : "game-shell"}>
 
         <div className="game-shell__top">

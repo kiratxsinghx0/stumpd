@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { isLoggedIn, getStoredUser, clearAuth, login, register, saveGameProgress } from "../services/auth-api";
 import { readStats, readPerModeBaseline } from "../stumpd/stats-storage";
 import { readCurrentGameProgress } from "../stumpd/progress-helpers";
@@ -38,10 +38,6 @@ export default function SettingsModal({
   puzzleDay,
   hideHardMode,
 }: Props) {
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const [igniting, setIgniting] = useState(false);
-  const [cardBounce, setCardBounce] = useState(false);
-
   // Auth state
   const [loggedIn, setLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -58,8 +54,6 @@ export default function SettingsModal({
       setLoggedIn(isLoggedIn());
       setUserEmail(getStoredUser()?.email ?? null);
     } else {
-      setIgniting(false);
-      setCardBounce(false);
       setEmail("");
       setPassword("");
       setError("");
@@ -78,32 +72,6 @@ export default function SettingsModal({
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const toggleDisabled = hardMode ? !canDisableHardMode : !canEnableHardMode;
-
-  const handleToggle = () => {
-    const enabling = !hardMode;
-    if (enabling && toggleRef.current) {
-      const rect = toggleRef.current.getBoundingClientRect();
-      const origin: ToggleOrigin = {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-
-      setIgniting(true);
-      setCardBounce(true);
-      setTimeout(() => setCardBounce(false), 400);
-
-      if (navigator.vibrate) navigator.vibrate([50, 30, 80]);
-
-      setTimeout(() => {
-        onToggleHardMode(true, origin);
-        onClose();
-      }, 450);
-    } else {
-      onToggleHardMode(false);
-    }
-  };
 
   const passwordTooShort = passwordTouched && password.length > 0 && password.length < 6;
 
@@ -171,7 +139,7 @@ export default function SettingsModal({
   return (
     <div className="settings-backdrop" onClick={onClose} role="presentation">
       <div
-        className={`settings-card${cardBounce ? " settings-card--bounce" : ""}`}
+        className="settings-card"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -198,38 +166,6 @@ export default function SettingsModal({
         </h2>
 
         <div className="settings-body">
-          {!hideHardMode && (
-            <>
-              <div className={`settings-option${toggleDisabled ? " settings-option--disabled" : ""}`}>
-                <div className="settings-option__info">
-                  <span className="settings-option__label">Hard Mode</span>
-                  <span className="settings-option__desc">
-                    No hints — win to unlock Godmode for 24h
-                  </span>
-                  {toggleDisabled && (
-                    <span className="settings-option__warn">
-                      Cannot switch modes while a game is in progress
-                    </span>
-                  )}
-                </div>
-                <button
-                  ref={toggleRef}
-                  type="button"
-                  className={`settings-toggle${hardMode || igniting ? " settings-toggle--on" : ""}${igniting ? " settings-toggle--igniting" : ""}`}
-                  onClick={handleToggle}
-                  disabled={toggleDisabled}
-                  role="switch"
-                  aria-checked={hardMode}
-                  aria-label="Toggle hard mode"
-                >
-                  <span className="settings-toggle__thumb" />
-                </button>
-              </div>
-
-              <div className="settings-divider" />
-            </>
-          )}
-
           {loggedIn ? (
             <div className="settings-account">
               <div className="settings-option">

@@ -83,12 +83,16 @@ type Props = {
   initialOpponentGuessCount?: number;
   roundNumber?: number;
   seriesLength?: number;
+  onAnimationsComplete?: () => void;
+  serverGameOver?: boolean;
 };
 
 export default function ChallengeGame({
   socket, roomCode, answer, fullName, hints, opponentName, myRole, disconnected,
   previousGuesses, initialOpponentGuessCount,
   roundNumber = 1, seriesLength = 1,
+  onAnimationsComplete,
+  serverGameOver: serverGameOverProp,
 }: Props) {
   const shellVpClass = useGameShellViewportClass();
 
@@ -127,7 +131,7 @@ export default function ChallengeGame({
   // Derived game state (replaces gameFinished boolean)
   const won = guesses.length > 0 && statuses[guesses.length - 1]?.every((s) => s === "correct");
   const lost = !won && guesses.length === MAX_GUESSES;
-  const gameOver = won || lost;
+  const gameOver = won || lost || !!serverGameOverProp;
   const allAnimationsComplete = gameOver && !isAnimating && winBounceRow === null;
 
   const validGuesses = useMemo(
@@ -276,6 +280,16 @@ export default function ChallengeGame({
       return () => clearTimeout(t);
     }
   }, [allAnimationsComplete]);
+
+  // Notify parent after animations complete so it can transition to full result screen
+  const animationsCompleteNotified = useRef(false);
+  useEffect(() => {
+    if (allAnimationsComplete && onAnimationsComplete && !animationsCompleteNotified.current) {
+      animationsCompleteNotified.current = true;
+      const t = setTimeout(onAnimationsComplete, 2500);
+      return () => clearTimeout(t);
+    }
+  }, [allAnimationsComplete, onAnimationsComplete]);
 
   const handleKey = useCallback((key: string) => {
     if (isAnimating || gameOver) return;
@@ -585,10 +599,10 @@ export default function ChallengeGame({
       {allAnimationsComplete ? (
         <div className="game-page__see-results">
           <div className={`ch-game-end${won ? " ch-game-end--won" : " ch-game-end--lost"}`} role="status">
-            <span className="ch-game-end__emoji">{won ? "🎉" : "😔"}</span>
+            <span className="ch-game-end__emoji">{won ? "🎉" : lost ? "😔" : "⏱️"}</span>
             <div className="ch-game-end__text">
               <p className="ch-game-end__title">
-                {won ? "You got it!" : "Bowled out!"}
+                {won ? "You got it!" : lost ? "Bowled out!" : `${opponentName} got it!`}
               </p>
               <p className="ch-game-end__sub">
                 {won

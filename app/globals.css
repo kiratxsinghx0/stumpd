@@ -726,7 +726,7 @@ button:not(.game-key):not(.game-key-wide):active {
   flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   max-width: 100%;
   min-height: var(--header-icon-btn);
   overflow-x: auto;
@@ -9327,31 +9327,31 @@ body.body--godmode .game-page__see-results {
 .ch-game__opponent-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 6px;
+  padding: 4px 10px;
   background: #ecfdf5;
   border: 1px solid #d1fae5;
-  border-radius: 12px;
-  margin: 8px 0 4px;
+  border-radius: 10px;
+  margin: 2px 0 2px;
   width: min(90%, 400px);
 }
 
 .ch-game__opponent-avatar {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #059669;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   flex-shrink: 0;
 }
 
 .ch-game__opponent-name {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #065f46;
   flex: 1;
@@ -9359,12 +9359,12 @@ body.body--godmode .game-page__see-results {
 
 .ch-game__opponent-dots {
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 
 .ch-game__opponent-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #d1fae5;
   transition: background 0.3s;
@@ -9486,6 +9486,15 @@ body.body--godmode .game-page__see-results {
 .ch-result__banner--won .ch-result__sub { color: #047857; }
 .ch-result__banner--lost .ch-result__sub { color: #b91c1c; }
 .ch-result__banner--draw .ch-result__sub { color: #a16207; }
+
+.ch-result__answer {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #374151;
+}
+.ch-result__banner--won .ch-result__answer { color: #047857; }
+.ch-result__banner--lost .ch-result__answer { color: #991b1b; }
+.ch-result__banner--draw .ch-result__answer { color: #92400e; }
 
 .ch-result__alias {
   margin: 4px 0 0;

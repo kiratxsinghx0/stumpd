@@ -8,8 +8,6 @@ import LeftSidebar from "./left-sidebar";
 import { dispatchOpenHowToPlay } from "./how-to-play-open";
 import { dispatchOpenHintHistory, HINT_COUNT_UPDATE_EVENT } from "./hint-history-open";
 import { dispatchOpenLeaderboard, LEADERBOARD_STATE_EVENT } from "./leaderboard-open";
-import { dispatchOpenSettings } from "./settings-modal";
-
 export { OPEN_HOW_TO_PLAY_EVENT, dispatchOpenHowToPlay } from "./how-to-play-open";
 export { OPEN_HINT_HISTORY_EVENT } from "./hint-history-open";
 export { OPEN_LEADERBOARD_EVENT, dispatchLeaderboardState } from "./leaderboard-open";
@@ -29,6 +27,8 @@ type PageHeaderProps = {
   godmodeHoursLeft?: number;
   /** First letter of user's name/email for Godmode shield. */
   userInitial?: string;
+  /** Whether hard mode is active (disables green hint styling). */
+  hardMode?: boolean;
 };
 
 export default function PageHeader({
@@ -39,6 +39,7 @@ export default function PageHeader({
   isGodmode = false,
   godmodeHoursLeft = 0,
   userInitial = "",
+  hardMode = false,
 }: PageHeaderProps) {
   const pathname = usePathname();
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
@@ -165,7 +166,7 @@ export default function PageHeader({
             {showHowToPlay ? (
               <button
                 type="button"
-                className="page-header-icon-btn page-header-hint-btn"
+                className={`page-header-icon-btn${hardMode ? "" : " page-header-hint-btn"}`}
                 aria-label="View hints"
                 onClick={() => dispatchOpenHintHistory()}
               >
@@ -191,6 +192,29 @@ export default function PageHeader({
                 )}
               </button>
             ) : null}
+            <Link
+              href="/"
+              className="page-header-icon-btn page-header-home-btn"
+              aria-label="Home"
+            >
+              <svg
+                className="page-header-icon-btn__glyph"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
+              >
+                <path
+                  d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
             {showHowToPlay ? (
               <button
                 type="button"
@@ -210,27 +234,6 @@ export default function PageHeader({
                   <rect x="3" y="13" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
                   <rect x="9.5" y="5" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
                   <rect x="16" y="9" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
-              </button>
-            ) : null}
-            {showHowToPlay ? (
-              <button
-                type="button"
-                className="page-header-icon-btn page-header-settings-btn"
-                aria-label="Settings"
-                onClick={() => dispatchOpenSettings()}
-              >
-                <svg
-                  className="page-header-icon-btn__glyph"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden
-                >
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
                 </svg>
               </button>
             ) : null}
