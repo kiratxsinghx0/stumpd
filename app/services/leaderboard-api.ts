@@ -51,6 +51,10 @@ export function fetchWeeklyLeaderboard(puzzleDay?: number): Promise<PeriodEntry[
   return fetchJson<PeriodEntry>(`/api/user/leaderboard/weekly${qs}`);
 }
 
+export function fetchLastWeekLeaderboard(): Promise<PeriodEntry[]> {
+  return fetchJson<PeriodEntry>("/api/user/leaderboard/last-week");
+}
+
 export function fetchMonthlyLeaderboard(puzzleDay?: number): Promise<PeriodEntry[]> {
   const qs = puzzleDay ? `?puzzle_day=${puzzleDay}` : "";
   return fetchJson<PeriodEntry>(`/api/user/leaderboard/monthly${qs}`);

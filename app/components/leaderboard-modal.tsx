@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import type { TodayEntry, PeriodEntry, HardModeTodayEntry } from "../services/leaderboard-api";
 import {
   fetchTodayLeaderboard,
@@ -282,6 +283,7 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, hardModePuz
       return () => clearTimeout(timer);
     }
   }, [open]);
+
   const cache = useRef<CacheMap>({ ...EMPTY_CACHE });
   const hardCache = useRef<HardCacheMap>({ ...EMPTY_HARD_CACHE });
   const lastInvalidateKey = useRef(invalidateKey);
@@ -500,6 +502,16 @@ export default function LeaderboardModal({ open, onClose, puzzleDay, hardModePuz
         </div>
 
         <RewardsBanner />
+
+        {!godmodeView && (
+          <div className="lb-reward-strip" aria-live="polite">
+            <p className="lb-reward-strip__line">
+              <Link href="/rewards/claim" className="lb-reward-strip__link lb-reward-strip__link--quiet">
+                See last week&apos;s rank &amp; rewards
+              </Link>
+            </p>
+          </div>
+        )}
 
         <div className="lb-body">
           {loading && currentData === null ? (

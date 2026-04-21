@@ -12,6 +12,10 @@ import SettingsModal from "../components/settings-modal";
 import type { ToggleOrigin } from "../components/settings-modal";
 import HardModeTransition from "../components/hard-mode-transition";
 import WeeklyTopPlayersNotice from "../components/weekly-top-players-notice";
+import type { WeeklyTopPlayer } from "../components/weekly-top-players-notice";
+import { fetchLastWeekLeaderboard } from "../services/leaderboard-api";
+import { fetchWeeklyWinners, fetchRewardEligibility } from "../services/rewards-api";
+import type { RewardEligibility } from "../services/rewards-api";
 import FunFactNotice from "../components/fun-fact-notice";
 import { dispatchHintCountUpdate } from "../components/hint-history-open";
 import { COOKIE_CONSENT_STORAGE_KEY } from "../components/cookie-banner";
@@ -60,7 +64,7 @@ const HINT_LADDER: { key: string; label: string }[] = [
 const LS_HOW_TO_PLAY_DISMISSED = "stumpdpuzzle_howToPlayDismissed";
 const LS_HOW_TO_PLAY_SEEN = "stumpdpuzzle_howToPlaySeen";
 const LS_WEEKLY_NOTICE_SEEN = "stumpdpuzzle_weeklyNoticeSeen";
-const ENABLE_WEEKLY_NOTICE = false;
+const ENABLE_WEEKLY_NOTICE = true;
 
 function shouldShowWeeklyNotice(): boolean {
   try {
@@ -68,8 +72,11 @@ function shouldShowWeeklyNotice(): boolean {
     if (!lastSeen) return true;
     const now = new Date();
     const monday = new Date(now);
-    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    monday.setHours(0, 0, 0, 0);
+    monday.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7));
+    monday.setUTCHours(0, 30, 0, 0);
+    if (now < monday) {
+      monday.setUTCDate(monday.getUTCDate() - 7);
+    }
     return new Date(lastSeen) < monday;
   } catch {
     return false;
@@ -610,6 +617,8 @@ export default function Game() {
   const [hmTransition, setHmTransition] = useState(false);
   const [hmTransOrigin, setHmTransOrigin] = useState<ToggleOrigin>({ x: 0, y: 0 });
   const [showWeeklyNotice, setShowWeeklyNotice] = useState(false);
+  const [weeklyTopPlayers, setWeeklyTopPlayers] = useState<WeeklyTopPlayer[]>([]);
+  const [rewardEligibility, setRewardEligibility] = useState<RewardEligibility | null>(null);
   const [showFunFact, setShowFunFact] = useState(false);
   const [lbInvalidateKey, setLbInvalidateKey] = useState(0);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>();
@@ -776,7 +785,21 @@ export default function Game() {
       if (rejected || localStorage.getItem(LS_HOW_TO_PLAY_DISMISSED) === "1") {
         if (ENABLE_WEEKLY_NOTICE && !rejected && shouldShowWeeklyNotice()) {
           markWeeklyNoticeSeen();
-          setTimeout(() => setShowWeeklyNotice(true), 300);
+          Promise.all([
+            fetchWeeklyWinners(),
+            fetchRewardEligibility(),
+          ]).then(([winnersData, eligibility]) => {
+            const top5 = winnersData.winners.slice(0, 5).map((w) => ({
+              rank: w.rank,
+              name: w.email,
+              points: w.points,
+            }));
+            setWeeklyTopPlayers(top5);
+            setRewardEligibility(eligibility);
+            setTimeout(() => setShowWeeklyNotice(true), 300);
+          }).catch(() => {
+            setHowToPlayDone(true);
+          });
         } else {
           setHowToPlayDone(true);
         }
@@ -799,7 +822,21 @@ export default function Game() {
 
     if (ENABLE_WEEKLY_NOTICE && shouldShowWeeklyNotice()) {
       markWeeklyNoticeSeen();
-      setShowWeeklyNotice(true);
+      Promise.all([
+        fetchWeeklyWinners(),
+        fetchRewardEligibility(),
+      ]).then(([winnersData, eligibility]) => {
+        const top5 = winnersData.winners.slice(0, 5).map((w) => ({
+          rank: w.rank,
+          name: w.email,
+          points: w.points,
+        }));
+        setWeeklyTopPlayers(top5);
+        setRewardEligibility(eligibility);
+        setShowWeeklyNotice(true);
+      }).catch(() => {
+        setHowToPlayDone(true);
+      });
     } else {
       setHowToPlayDone(true);
     }
@@ -1944,6 +1981,9 @@ export default function Game() {
       <WeeklyTopPlayersNotice
         open={showWeeklyNotice}
         onClose={dismissWeeklyNotice}
+        players={weeklyTopPlayers}
+        currentUserName={(() => { try { const u = getStoredUser(); return u?.email?.split("@")[0] ?? null; } catch { return null; } })()}
+        eligibility={rewardEligibility}
       />
 
       <FunFactNotice
