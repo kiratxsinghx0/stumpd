@@ -121,6 +121,14 @@ export default function ChallengePage() {
         </p>
       </div>
 
+      <div className="info-card" style={{ animation: "hubCardIn 0.35s ease 0.04s both" }}>
+        <p className="info-card__text">
+          Create a private room and share the code with a friend. Both of you
+          solve the same mystery cricketer puzzle at the same time. The faster
+          guesser wins — it&apos;s Stumpd, but head-to-head.
+        </p>
+      </div>
+
       <div className="challenge-hub__cards-grid">
         <div className="challenge-hub__card" style={{ animation: "hubCardIn 0.4s ease 0.06s both" }}>
           <div className="challenge-hub__card-header">

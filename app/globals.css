@@ -4505,6 +4505,82 @@ a.page-header-icon-btn {
   border-top: 1px solid #eef2ef;
 }
 
+/* ── Blog index ───── */
+.blog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.blog-list__item {
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #eef2ef;
+}
+
+.blog-list__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.blog-list__date {
+  display: block;
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+}
+
+.blog-list__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0 0 0.5rem;
+}
+
+.blog-list__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.blog-list__title a:hover {
+  text-decoration: underline;
+}
+
+.blog-list__excerpt {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0 0 0.65rem;
+}
+
+.blog-list__read-more {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.blog-list__read-more:hover {
+  text-decoration: underline;
+}
+
+.blog-list__nav {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #eef2ef;
+}
+
+.blog-list__nav a {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.blog-list__nav a:hover {
+  text-decoration: underline;
+}
+
 /* Cookie consent banner â€” fixed bottom, slides up on first visit */
 .cookie-banner {
   position: fixed;
@@ -8464,6 +8540,25 @@ body.body--godmode .game-page__see-results {
   flex-direction: column;
   align-items: center;
   background: #fff;
+}
+
+/* ── Info card — reusable explainer card for archive, challenge, etc. ── */
+.info-card {
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto 1rem;
+  padding: 12px 16px;
+  background: #f8faf9;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.info-card__text {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #4b5563;
+  line-height: 1.55;
 }
 
 .archive-container {

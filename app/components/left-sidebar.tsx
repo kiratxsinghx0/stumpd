@@ -226,6 +226,23 @@ export default function LeftSidebar({
           </a>
           <section
             className="left-sidebar-section"
+            aria-labelledby="left-sidebar-more-heading"
+          >
+            <h3
+              id="left-sidebar-more-heading"
+              className="left-sidebar-section-title"
+            >
+              More
+            </h3>
+            <Link href="/blog" className={`left-sidebar-link${pathname?.startsWith("/blog") ? " left-sidebar-link--active" : ""}`} onClick={onClose}>
+              Blog
+            </Link>
+            <Link href="/about" className={`left-sidebar-link${pathname === "/about" ? " left-sidebar-link--active" : ""}`} onClick={onClose}>
+              About
+            </Link>
+          </section>
+          <section
+            className="left-sidebar-section"
             aria-labelledby="left-sidebar-privacy-settings-heading"
           >
             <h3

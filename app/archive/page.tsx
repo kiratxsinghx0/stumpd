@@ -81,6 +81,13 @@ export default function ArchivePage() {
       <PageHeader showHowToPlay={false} logoSrc="/stumpd-logo.png" logoAlt="Stumpd" />
 
       <div className="archive-container">
+        <div className="info-card">
+          <p className="info-card__text">
+            Missed a day? Browse the calendar and play any past Stumpd puzzle.
+            Tap a date to replay that day&apos;s mystery cricketer.
+            Dates you&apos;ve already played are marked with a star.
+          </p>
+        </div>
         <div className="archive-calendar">
           {/* Month / Year header */}
           <div className="archive-calendar__nav">

@@ -1363,10 +1363,16 @@ export default function Game() {
     const modeCounters = readModeStats(mode);
     const localStreaks = readStreaks(mode);
     const fallback = readStats();
+
+    const currentDay = puzzleData?.day ?? 0;
+    const streakIsStale = localStreaks.lastPuzzleDay > 0
+      && currentDay > 0
+      && currentDay - localStreaks.lastPuzzleDay > 1;
+
     const merged: GameStats = {
       gamesPlayed: modeCounters.gamesPlayed || fallback.gamesPlayed,
       gamesWon: modeCounters.gamesWon || fallback.gamesWon,
-      currentStreak: localStreaks.currentStreak,
+      currentStreak: streakIsStale ? 0 : localStreaks.currentStreak,
       maxStreak: localStreaks.maxStreak,
     };
     setStats(merged);
@@ -1385,7 +1391,7 @@ export default function Game() {
       }).catch(() => {});
     }
     return () => { cancelled = true; };
-  }, [showModal, hardMode]);
+  }, [showModal, hardMode, puzzleData?.day]);
 
   const handleKey = useCallback((key: string) => {
     if (inputLocked || isAnimating || gameOver) return;
