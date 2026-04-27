@@ -20,6 +20,7 @@ const entries: Entry[] = [
   { path: "/blog/the-inspiration-behind-stumpd", changeFrequency: "monthly", priority: 0.6 },
   { path: "/blog/the-journey-of-stumpd", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/rewards/claim", changeFrequency: "weekly", priority: 0.45 },
   { path: "/cookies", changeFrequency: "monthly", priority: 0.35 },
   { path: "/privacy", changeFrequency: "monthly", priority: 0.35 },
   { path: "/terms", changeFrequency: "monthly", priority: 0.35 },
