@@ -277,6 +277,13 @@ export default function LeftSidebar({
             {loggedIn ? (
               <>
                 <span className="left-sidebar-account-email">{userEmail}</span>
+                <Link
+                  href="/profile"
+                  className={`left-sidebar-link${pathname === "/profile" ? " left-sidebar-link--active" : ""}`}
+                  onClick={onClose}
+                >
+                  Profile
+                </Link>
                 <button
                   type="button"
                   className="left-sidebar-link left-sidebar-auth-btn left-sidebar-logout-btn"

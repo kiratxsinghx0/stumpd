@@ -3,7 +3,7 @@
 import { useState, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import type { RewardEligibility } from "../services/rewards-api";
+import { isRewardClaimLocked, rankOrdinal, type RewardEligibility } from "../services/rewards-api";
 
 export type WeeklyTopPlayer = {
   rank: number;
@@ -55,9 +55,12 @@ export default function WeeklyTopPlayersNotice({ open, onClose, players, current
 
   const isEligible = eligibility?.eligible === true;
   const alreadyClaimed = eligibility?.already_claimed === true;
-  const isInTop5 = isEligible || (!!currentUserName && players.some(
-    (p) => p.name.toLowerCase() === currentUserName.toLowerCase()
-  ));
+  const claimLocked = isRewardClaimLocked(eligibility);
+  const myRank = eligibility?.rank ?? null;
+  const canClaimRewards =
+    isEligible ||
+    (!!currentUserName && players.some((p) => p.name.toLowerCase() === currentUserName.toLowerCase()));
+  const congratsTop5 = canClaimRewards && (myRank == null || myRank <= 5);
 
   if (!open || !mounted) return null;
 
@@ -120,23 +123,37 @@ export default function WeeklyTopPlayersNotice({ open, onClose, players, current
             <p className="weekly-notice-subtitle">No results from last week yet.</p>
           )}
 
-          {isInTop5 ? (
+          {canClaimRewards ? (
             <div className="weekly-notice-cta">
               <p className="weekly-notice-hook">
-                🎉 Congrats! You made the top 5!
+                {congratsTop5
+                  ? "🎉 Congrats! You made the top 5!"
+                  : "🎉 Congrats! You made the top 10!"}
               </p>
-              <p className="weekly-notice-reset-info">Top 5 players win weekly rewards</p>
+              <p className="weekly-notice-reset-info">
+                Top 10 can claim rewards &middot; Top 5 are listed above &middot; Resets every Monday
+              </p>
+              {isEligible && myRank != null && myRank >= 6 && myRank <= 10 && (
+                <p className="weekly-notice-passdown">
+                  <strong>You&apos;re in {rankOrdinal(myRank)} place.</strong>
+                  <br />
+                  The top five get prizes first. If one didn&apos;t do all the jobs—Reddit, Insta story, and the rest—you
+                  might get that prize. Do all your jobs too so it won&apos;t go past you.
+                </p>
+              )}
             </div>
           ) : (
             <div className="weekly-notice-cta">
               <p className="weekly-notice-hook">
                 🔥 You could be here! Don&apos;t break your streak.
               </p>
-              <p className="weekly-notice-reset-info">Top 5 players win weekly rewards &middot; Resets every Monday</p>
+              <p className="weekly-notice-reset-info">
+                Top 10 can claim weekly rewards &middot; Top 5 shown here &middot; Resets every Monday
+              </p>
             </div>
           )}
 
-          {isInTop5 && !alreadyClaimed ? (
+          {canClaimRewards && !alreadyClaimed ? (
             <Link
               href="/rewards/claim"
               className="weekly-notice-play-btn weekly-notice-claim-btn"
@@ -144,13 +161,21 @@ export default function WeeklyTopPlayersNotice({ open, onClose, players, current
             >
               🎁 Claim Your Rewards
             </Link>
-          ) : isInTop5 && alreadyClaimed ? (
+          ) : canClaimRewards && alreadyClaimed && !claimLocked ? (
+            <Link
+              href="/rewards/claim"
+              className="weekly-notice-play-btn weekly-notice-claim-btn"
+              onClick={onClose}
+            >
+              📝 Update reward claim
+            </Link>
+          ) : canClaimRewards && claimLocked ? (
             <button
               type="button"
               className="weekly-notice-play-btn weekly-notice-claimed-btn"
               onClick={onClose}
             >
-              ✅ Reward Claimed
+              ✅ Claim finalized
             </button>
           ) : (
             <button

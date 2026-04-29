@@ -17,6 +17,16 @@ export type WeeklyWinnersResponse = {
   winners: WeeklyWinner[];
 };
 
+export type SavedRewardClaim = {
+  instagram_username: string;
+  reddit_username: string;
+  upi_id: string;
+  insta_follow_done: boolean;
+  reddit_follow_done: boolean;
+  insta_story_done: boolean;
+  reddit_post_done: boolean;
+};
+
 export type RewardEligibility = {
   eligible: boolean;
   rank: number | null;
@@ -26,7 +36,23 @@ export type RewardEligibility = {
   week_number: number;
   already_claimed: boolean;
   claim_status: string | null;
+  /** Saved claim for this week, if any (for form prefill). */
+  claim: SavedRewardClaim | null;
 };
+
+/** User cannot edit claim after admin marks paid or rejected. */
+export function isRewardClaimLocked(eligibility: RewardEligibility | null | undefined): boolean {
+  if (!eligibility?.already_claimed) return false;
+  const s = eligibility.claim_status;
+  return s === "paid" || s === "rejected";
+}
+
+/** e.g. 9 → "9th" for simple rank labels */
+export function rankOrdinal(rank: number): string {
+  const r = Math.floor(rank);
+  const suffix = r === 1 ? "st" : r === 2 ? "nd" : r === 3 ? "rd" : "th";
+  return `${r}${suffix}`;
+}
 
 export async function fetchWeeklyWinners(weekNumber?: number): Promise<WeeklyWinnersResponse> {
   const qs = weekNumber ? `?week_number=${weekNumber}` : "";
@@ -41,6 +67,11 @@ export type ClaimResult = {
   rank: number;
   amount: number;
   status: string;
+  updated?: boolean;
+  insta_follow_done?: boolean;
+  reddit_follow_done?: boolean;
+  insta_story_done?: boolean;
+  reddit_post_done?: boolean;
 };
 
 export async function fetchRewardEligibility(): Promise<RewardEligibility | null> {
@@ -53,7 +84,11 @@ export async function fetchRewardEligibility(): Promise<RewardEligibility | null
     if (!res.ok) return null;
     const json = await res.json();
     if (!json.success) return null;
-    return json.data;
+    const d = json.data;
+    return {
+      ...d,
+      claim: d.claim != null ? d.claim : null,
+    } as RewardEligibility;
   } catch {
     return null;
   }
@@ -63,6 +98,10 @@ export async function submitRewardClaim(data: {
   instagram_username: string;
   reddit_username: string;
   upi_id: string;
+  insta_follow_done: boolean;
+  reddit_follow_done: boolean;
+  insta_story_done: boolean;
+  reddit_post_done: boolean;
 }): Promise<{ success: boolean; message: string; data?: ClaimResult }> {
   const token = getToken();
   if (!token) return { success: false, message: "Not logged in" };

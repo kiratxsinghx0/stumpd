@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { isLoggedIn, getStoredUser, clearAuth, login, register, saveGameProgress } from "../services/auth-api";
 import type { GameResultPayload } from "../services/auth-api";
@@ -189,6 +190,9 @@ export default function SettingsModal({
                   Log Out
                 </button>
               </div>
+              <Link href="/profile" className="settings-profile-link" onClick={onClose}>
+                Profile
+              </Link>
               {showLogoutConfirm && (
                 <div className="settings-logout-confirm">
                   <p className="settings-logout-confirm__text">

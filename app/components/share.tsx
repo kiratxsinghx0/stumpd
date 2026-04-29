@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import Link from "next/link";
 import type { GameStats, LiveStats } from "./games";
 import ReminderPrompt from "./reminder-prompt";
 import { register, login, isLoggedIn } from "../services/auth-api";
@@ -12,6 +13,9 @@ import { fetchTodayLeaderboard } from "../services/leaderboard-api";
 import type { TodayEntry } from "../services/leaderboard-api";
 import { dispatchOpenLeaderboard } from "./leaderboard-open";
 import { activateGodmode } from "../utils/godmode-status";
+import { badgeImageSrc } from "../lib/badge-image-src";
+import { rowToBadgeDefs } from "../lib/user-badge-defs";
+import { fetchMyBadges, type MyBadgesPayload } from "../services/badges-api";
 
 const STATUS_EMOJI: Record<string, string> = {
   correct: "🟩",
@@ -176,6 +180,102 @@ function ShareCommunityPulse({
         </div>
       </div>
     </div>
+  );
+}
+
+type ShareBadgeItem = {
+  modeId: "daily" | "hard";
+  id: string;
+  title: string;
+  detail?: string;
+};
+
+function ShareEarnedBadges({ onClose }: { onClose: () => void }) {
+  const [payload, setPayload] = useState<MyBadgesPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyBadges()
+      .then((d) => {
+        if (!cancelled) setPayload(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const earnedItems = useMemo((): ShareBadgeItem[] => {
+    if (!payload) return [];
+    const out: ShareBadgeItem[] = [];
+    for (const b of rowToBadgeDefs(payload.normal)) {
+      if (b.earned) {
+        out.push({ modeId: "daily", id: b.id, title: b.title, detail: b.detail });
+      }
+    }
+    for (const b of rowToBadgeDefs(payload.hard)) {
+      if (b.earned) {
+        out.push({ modeId: "hard", id: b.id, title: b.title, detail: b.detail });
+      }
+    }
+    return out;
+  }, [payload]);
+
+  return (
+    <section className="share-earned-badges" aria-labelledby="share-earned-badges-title">
+      <h3 id="share-earned-badges-title" className="share-earned-badges__title">
+        Earned badges
+      </h3>
+      {loading ? (
+        <p className="share-earned-badges__hint">Loading…</p>
+      ) : payload == null ? (
+        <p className="share-earned-badges__hint">Sign in from settings to sync badges.</p>
+      ) : earnedItems.length === 0 ? (
+        <p className="share-earned-badges__hint">None yet — keep playing!</p>
+      ) : (
+        <div className="share-earned-badges__scroll">
+          <ul className="share-earned-badges__list">
+            {earnedItems.map((item) => {
+              const src = badgeImageSrc(item.modeId, item.id);
+              return (
+                <li key={`${item.modeId}-${item.id}`} className="share-earned-badges__item">
+                  <div className="share-earned-badges__card">
+                    <div className="share-earned-badges__thumb-wrap">
+                      {src ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- small list thumbs from /public/badges
+                        <img
+                          src={src}
+                          alt=""
+                          className="share-earned-badges__thumb"
+                          decoding="async"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="share-earned-badges__meta">
+                      <span className="share-earned-badges__name" title={item.title}>
+                        {item.title}
+                      </span>
+                      <span className="share-earned-badges__mode">{item.modeId === "daily" ? "Daily" : "Hard"}</span>
+                      {item.detail ? (
+                        <span className="share-earned-badges__detail">{item.detail}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      <div className="share-earned-badges__footer">
+        <Link href="/badges" className="share-earned-badges__see-all" onClick={onClose}>
+          See all badges
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -664,6 +764,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 playedToday={playedToday}
                 solvedPercent={solvedPercent}
               />
+              <ShareEarnedBadges onClose={onClose} />
               <MiniTodayLeaderboard puzzleDay={puzzleDay} refreshKey={lbRefreshKey} />
               <DistributionChart userGuess={guessCount} won={won} distribution={dist} />
             </>
@@ -681,6 +782,7 @@ export default function ShareModal({ won, answer, guessCount, statuses, stats, e
                 playedToday={playedToday}
                 solvedPercent={solvedPercent}
               />
+              <ShareEarnedBadges onClose={onClose} />
               <MiniTodayLeaderboard puzzleDay={puzzleDay} refreshKey={lbRefreshKey} />
             </>
           )}
