@@ -1109,6 +1109,7 @@ a.page-header-icon-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-height: 8px;
 }
 
 .game-grid-wrap {
@@ -1491,13 +1492,15 @@ a.page-header-icon-btn {
 }
 
 .game-hint-slot--active {
-  min-height: 5.2rem;
+  min-height: 5.5rem;
+  height: 5.5rem;
   margin-top: 8px;
 }
 
 @media (max-width: 767px) {
   .game-hint-slot--active {
-    min-height: 4.6rem;
+    min-height: 5rem;
+    height: 5rem;
     margin-top: 6px;
   }
 
@@ -1508,7 +1511,8 @@ a.page-header-icon-btn {
 
 @media (max-width: 480px) {
   .game-hint-slot--active {
-    min-height: 4.2rem;
+    min-height: 4.6rem;
+    height: 4.6rem;
     margin-top: 4px;
   }
 }
@@ -1520,7 +1524,8 @@ a.page-header-icon-btn {
   }
 
   .game-hint-slot--active {
-    min-height: 3.8rem;
+    min-height: 5rem;
+    height: 5rem;
     margin-top: 6px;
   }
 
@@ -1536,7 +1541,8 @@ a.page-header-icon-btn {
   }
 
   .game-hint-slot--active {
-    min-height: 3.6rem;
+    min-height: 5rem;
+    height: 5rem;
     margin-top: 6px;
   }
 }
@@ -1576,6 +1582,217 @@ a.page-header-icon-btn {
   .game-hint-card {
     max-height: 4.5rem;
   }
+}
+
+/* Hints / Search toggle (normal + archive only; not god mode) */
+.game-hint-card.game-hint-card--assist {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+  padding: 4px 8px 5px;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .game-hint-card.game-hint-card--assist {
+    padding: 3px 6px 4px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .game-hint-card.game-hint-card--assist {
+    padding: 4px 8px 5px;
+  }
+}
+
+.game-hint-tabs {
+  display: inline-flex;
+  flex-direction: column;
+  align-self: stretch;
+  flex-shrink: 0;
+  gap: 2px;
+  margin-bottom: 0;
+  padding: 1px;
+  border-radius: 6px;
+  background: rgba(45, 106, 79, 0.1);
+  border: 1px solid rgba(45, 106, 79, 0.2);
+  line-height: 1;
+}
+
+.game-hint-tab {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 2px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #2d6a4f;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  line-height: 1;
+}
+
+.game-hint-tab--active {
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(19, 78, 58, 0.1);
+  color: #1b4332;
+}
+
+.game-hint-tab__label {
+  line-height: 1;
+}
+
+.game-hint-tab__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #e63946;
+  flex-shrink: 0;
+}
+
+.game-hint-card__panel--hints {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 4px 28px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-hint-card__panel--search {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 2px 4px 4px;
+  text-align: left;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.game-hint-search-results {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  border: 1px solid rgba(45, 106, 79, 0.15);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.game-hint-search-hint {
+  margin: 0;
+  padding: 5px 8px;
+  font-size: 0.65rem;
+  color: #52796f;
+  line-height: 1.3;
+}
+
+@media (min-width: 1024px) {
+  .game-hint-search-hint {
+    font-size: 0.72rem;
+    padding: 6px 10px;
+  }
+}
+
+.game-hint-search-row {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 2px 8px;
+  border: none;
+  border-bottom: 1px solid rgba(45, 106, 79, 0.08);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  line-height: 1.15;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 480px) {
+  .game-hint-search-row {
+    padding: 2px 6px;
+    gap: 5px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .game-hint-search-row {
+    padding: 2px 10px;
+    gap: 7px;
+  }
+}
+
+.game-hint-search-row:last-child {
+  border-bottom: none;
+}
+
+.game-hint-search-row:hover:not(:disabled) {
+  background: rgba(45, 106, 79, 0.06);
+}
+
+.game-hint-search-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.game-hint-search-row__token {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: #1b4332;
+  flex-shrink: 0;
+}
+
+.game-hint-search-row__name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #2d3a36;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .game-hint-search-row__token {
+    font-size: 0.68rem;
+  }
+
+  .game-hint-search-row__name {
+    font-size: 0.74rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .game-hint-search-row__token {
+    font-size: 0.78rem;
+  }
+
+  .game-hint-search-row__name {
+    font-size: 0.85rem;
+  }
+}
+
+.game-hint-card--assist .game-hint-card__panel--hints .game-hint-card__dots {
+  margin-top: 2px;
 }
 
 /* ── Arrow buttons ── */

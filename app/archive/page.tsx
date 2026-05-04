@@ -9,6 +9,8 @@ import { isLoggedIn, fetchArchivePlayed } from "../services/auth-api";
 
 const ARCHIVE_START_YEAR = 2026;
 const ARCHIVE_START_MONTH = 3; // April (0-indexed)
+const LAUNCH_UTC_MS = Date.UTC(ARCHIVE_START_YEAR, ARCHIVE_START_MONTH, 1);
+const MS_PER_DAY = 86_400_000;
 const DAY_NAMES = ["S", "M", "T", "W", "T", "F", "S"];
 
 function getDaysInMonth(year: number, month: number) {
@@ -26,21 +28,32 @@ function getMonthName(month: number) {
   ][month];
 }
 
-/** 6 AM IST = 00:30 UTC cutoff — today's puzzle day hasn't "happened" until after this */
-function getTodayPuzzleDate(): number {
+/**
+ * Convert (year, month, date) → absolute puzzle day, where April 1, 2026 = 1.
+ * The backend stores puzzles by this running index, not by calendar day-of-month.
+ */
+function dateToPuzzleDay(year: number, month: number, date: number): number {
+  return Math.floor((Date.UTC(year, month, date) - LAUNCH_UTC_MS) / MS_PER_DAY) + 1;
+}
+
+/** 6 AM IST = 00:30 UTC cutoff — today's puzzle hasn't "happened" until after this. */
+function getTodayPuzzleAnchor(): { year: number; month: number; puzzleDay: number } {
   const now = new Date();
   const cutoff = new Date(now);
   cutoff.setUTCHours(0, 30, 0, 0);
   if (now < cutoff) {
     cutoff.setUTCDate(cutoff.getUTCDate() - 1);
   }
-  return cutoff.getUTCDate();
+  const year = cutoff.getUTCFullYear();
+  const month = cutoff.getUTCMonth();
+  const date = cutoff.getUTCDate();
+  return { year, month, puzzleDay: dateToPuzzleDay(year, month, date) };
 }
 
 export default function ArchivePage() {
   const router = useRouter();
-  const [year] = useState(ARCHIVE_START_YEAR);
-  const [month] = useState(ARCHIVE_START_MONTH);
+  const [year, setYear] = useState(ARCHIVE_START_YEAR);
+  const [month, setMonth] = useState(ARCHIVE_START_MONTH);
   const [playedMap, setPlayedMap] = useState<Map<number, boolean>>(new Map());
 
   useEffect(() => {
@@ -67,13 +80,36 @@ export default function ArchivePage() {
     }
   }, []);
 
-  const todayDate = useMemo(() => getTodayPuzzleDate(), []);
-  const maxPlayableDate = todayDate - 1;
+  const today = useMemo(() => getTodayPuzzleAnchor(), []);
+  const maxPlayablePuzzleDay = today.puzzleDay - 1;
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfWeek(year, month);
 
-  const handleDateClick = (date: number) => {
-    router.push(`/stumpd?day=${date}`);
+  const isAtStart = year === ARCHIVE_START_YEAR && month === ARCHIVE_START_MONTH;
+  const isAtCurrent = year === today.year && month === today.month;
+
+  const goToPrevMonth = () => {
+    if (isAtStart) return;
+    if (month === 0) {
+      setYear((y) => y - 1);
+      setMonth(11);
+    } else {
+      setMonth((m) => m - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (isAtCurrent) return;
+    if (month === 11) {
+      setYear((y) => y + 1);
+      setMonth(0);
+    } else {
+      setMonth((m) => m + 1);
+    }
+  };
+
+  const handleDateClick = (puzzleDay: number) => {
+    router.push(`/stumpd?day=${puzzleDay}`);
   };
 
   return (
@@ -94,7 +130,8 @@ export default function ArchivePage() {
             <button
               type="button"
               className="archive-calendar__arrow"
-              disabled
+              onClick={goToPrevMonth}
+              disabled={isAtStart}
               aria-label="Previous month"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -108,7 +145,8 @@ export default function ArchivePage() {
             <button
               type="button"
               className="archive-calendar__arrow"
-              disabled
+              onClick={goToNextMonth}
+              disabled={isAtCurrent}
               aria-label="Next month"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
@@ -133,9 +171,10 @@ export default function ArchivePage() {
 
             {Array.from({ length: daysInMonth }, (_, i) => {
               const date = i + 1;
-              const playable = date <= maxPlayableDate && date >= 1;
-              const played = playedMap.has(date);
-              const won = playedMap.get(date) === true;
+              const puzzleDay = dateToPuzzleDay(year, month, date);
+              const playable = puzzleDay >= 1 && puzzleDay <= maxPlayablePuzzleDay;
+              const played = playedMap.has(puzzleDay);
+              const won = playedMap.get(puzzleDay) === true;
 
               let cellClass = "archive-calendar__cell";
               if (!playable) cellClass += " archive-calendar__cell--disabled";
@@ -149,7 +188,7 @@ export default function ArchivePage() {
                   type="button"
                   className={cellClass}
                   disabled={!playable}
-                  onClick={() => playable && handleDateClick(date)}
+                  onClick={() => playable && handleDateClick(puzzleDay)}
                   aria-label={`Day ${date}${played ? (won ? ", completed" : ", attempted") : ""}`}
                 >
                   <span className="archive-calendar__cell-inner">

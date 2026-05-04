@@ -105,6 +105,17 @@ function markFunFactSeen(day: number): void {
   } catch { /* */ }
 }
 
+const LS_CLUE_TAB_KEY = "stumpd-clue-tab";
+
+function readStoredClueTab(): "hints" | "search" {
+  if (typeof window === "undefined") return "hints";
+  try {
+    const raw = localStorage.getItem(LS_CLUE_TAB_KEY);
+    if (raw === "search") return "search";
+  } catch { /* */ }
+  return "hints";
+}
+
 type IplHintEntry = PuzzleHintEntry;
 
 /** When `disambiguateFullName` is set (from the daily puzzle), pick that row among duplicate tokens (e.g. RASHI). */
@@ -992,6 +1003,47 @@ export default function Game() {
 
   const [activeHintIdx, setActiveHintIdx] = useState(0);
   const [hintSlideDir, setHintSlideDir] = useState<"left" | "right" | "">("");
+  const [cluePanelTab, setCluePanelTab] = useState<"hints" | "search">(() => readStoredClueTab());
+  const [hintsTabUnread, setHintsTabUnread] = useState(false);
+  const prevWrongGuessRef = useRef<number | null>(null);
+
+  const playerPrefixMatches = useMemo(() => {
+    const q = currentInput.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out: IplPlayerRow[] = [];
+    const seen = new Set<string>();
+    for (const p of playerList) {
+      const n = p.name.toLowerCase();
+      if (!n.startsWith(q)) continue;
+      const key = `${n}\0${p.meta.fullName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(p);
+      if (out.length >= 30) break;
+    }
+    return out;
+  }, [playerList, currentInput]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_CLUE_TAB_KEY, cluePanelTab);
+    } catch { /* */ }
+  }, [cluePanelTab]);
+
+  useEffect(() => {
+    if (prevWrongGuessRef.current === null) {
+      prevWrongGuessRef.current = wrongGuessCount;
+      return;
+    }
+    if (wrongGuessCount > prevWrongGuessRef.current && cluePanelTab === "search") {
+      setHintsTabUnread(true);
+    }
+    prevWrongGuessRef.current = wrongGuessCount;
+  }, [wrongGuessCount, cluePanelTab]);
+
+  useEffect(() => {
+    if (cluePanelTab === "hints") setHintsTabUnread(false);
+  }, [cluePanelTab]);
 
   useEffect(() => {
     setActiveHintIdx(allUnlockedHints.length - 1);
@@ -1045,6 +1097,7 @@ export default function Game() {
     setStatuses([]);
     setLetterStatus({});
     setCurrentInput("");
+    prevWrongGuessRef.current = null;
     setShareDismissed(false);
     setShowModal(false);
     setTimerStarted(false);
@@ -1617,6 +1670,8 @@ export default function Game() {
   const emptyText = useDarkTheme ? "#e0c97f" : "#000";
   const filledBorder = useDarkTheme ? "#8b7e4a" : "#888";
 
+  const showAssistSlot = !useDarkTheme && showHintSlot;
+
   return (
     <>
       <div className={`game-page__content${useDarkTheme ? " godmode-theme" : ""}`}>
@@ -1624,16 +1679,12 @@ export default function Game() {
         <div className={shellVpClass ? `game-shell ${shellVpClass}` : "game-shell"}>
 
         <div className="game-shell__top">
-          {!useDarkTheme && (
+          {!useDarkTheme && isArchiveMode && (
             <p className="game-subtitle game-subtitle--stumpd">
-              {isArchiveMode ? (
-                <Link href="/archive" className="archive-subtitle-link">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
-                  Archive — Day {archiveDay}
-                </Link>
-              ) : (
-                "Guess the Cricketer"
-              )}
+              <Link href="/archive" className="archive-subtitle-link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                Archive — Day {archiveDay}
+              </Link>
             </p>
           )}
         </div>
@@ -1782,66 +1833,121 @@ export default function Game() {
         </div>
 
         <div
-          className={`game-hint-slot${showHintSlot ? " game-hint-slot--active" : ""}`}
+          className={`game-hint-slot${showAssistSlot ? " game-hint-slot--active" : ""}`}
           aria-live="polite"
         >
-          {showHintSlot ? (
-            <div
-              className="game-hint-card"
-              role="status"
-              onTouchStart={onHintTouchStart}
-              onTouchEnd={onHintTouchEnd}
-            >
-              {allUnlockedHints.length > 1 && (
+          {showAssistSlot ? (
+            <div className="game-hint-card game-hint-card--assist">
+              <div className="game-hint-tabs" role="tablist" aria-label="Hints or player search">
                 <button
                   type="button"
-                  className="game-hint-card__arrow game-hint-card__arrow--left"
-                  onClick={() => goToHint(activeHintIdx - 1)}
-                  disabled={activeHintIdx === 0}
-                  aria-label="Previous clue"
+                  role="tab"
+                  aria-selected={cluePanelTab === "hints"}
+                  className={`game-hint-tab${cluePanelTab === "hints" ? " game-hint-tab--active" : ""}`}
+                  onClick={() => setCluePanelTab("hints")}
                 >
-                  <span className="game-hint-card__arrow__icon">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
-                  </span>
+                  <span className="game-hint-tab__label">Hints</span>
+                  {hintsTabUnread ? <span className="game-hint-tab__dot" aria-hidden /> : null}
                 </button>
-              )}
-              {allUnlockedHints.length > 1 && (
                 <button
                   type="button"
-                  className="game-hint-card__arrow game-hint-card__arrow--right"
-                  onClick={() => goToHint(activeHintIdx + 1)}
-                  disabled={activeHintIdx === allUnlockedHints.length - 1}
-                  aria-label="Next clue"
+                  role="tab"
+                  aria-selected={cluePanelTab === "search"}
+                  className={`game-hint-tab${cluePanelTab === "search" ? " game-hint-tab--active" : ""}`}
+                  onClick={() => setCluePanelTab("search")}
                 >
-                  <span className="game-hint-card__arrow__icon">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
-                  </span>
+                  Search
                 </button>
-              )}
-
-              <div
-                key={`hint-${activeHintIdx}`}
-                className={`game-hint-card__content game-hint-card__content--slide${
-                  hintSlideDir === "left" ? "-left" : hintSlideDir === "right" ? "-right" : ""
-                }`}
-              >
-                <p className="game-hint-card__label">{viewingHint.label}</p>
-                <p className="game-hint-card__text">{viewingHint.text}</p>
               </div>
 
-              <div className="game-hint-card__dots">
-                {allUnlockedHints.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`game-hint-card__dot${
-                      i === activeHintIdx ? " game-hint-card__dot--active" : ""
+              {cluePanelTab === "hints" ? (
+                <div
+                  className="game-hint-card__panel game-hint-card__panel--hints"
+                  role="status"
+                  onTouchStart={onHintTouchStart}
+                  onTouchEnd={onHintTouchEnd}
+                >
+                  {allUnlockedHints.length > 1 && (
+                    <button
+                      type="button"
+                      className="game-hint-card__arrow game-hint-card__arrow--left"
+                      onClick={() => goToHint(activeHintIdx - 1)}
+                      disabled={activeHintIdx === 0}
+                      aria-label="Previous clue"
+                    >
+                      <span className="game-hint-card__arrow__icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                      </span>
+                    </button>
+                  )}
+                  {allUnlockedHints.length > 1 && (
+                    <button
+                      type="button"
+                      className="game-hint-card__arrow game-hint-card__arrow--right"
+                      onClick={() => goToHint(activeHintIdx + 1)}
+                      disabled={activeHintIdx === allUnlockedHints.length - 1}
+                      aria-label="Next clue"
+                    >
+                      <span className="game-hint-card__arrow__icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                      </span>
+                    </button>
+                  )}
+
+                  <div
+                    key={`hint-${activeHintIdx}`}
+                    className={`game-hint-card__content game-hint-card__content--slide${
+                      hintSlideDir === "left" ? "-left" : hintSlideDir === "right" ? "-right" : ""
                     }`}
-                    onClick={() => goToHint(i)}
-                    aria-label={`Go to clue ${i + 1}`}
-                  />
-                ))}
-              </div>
+                  >
+                    <p className="game-hint-card__label">{viewingHint.label}</p>
+                    <p className="game-hint-card__text">{viewingHint.text}</p>
+                  </div>
+
+                  <div className="game-hint-card__dots">
+                    {allUnlockedHints.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`game-hint-card__dot${
+                          i === activeHintIdx ? " game-hint-card__dot--active" : ""
+                        }`}
+                        onClick={() => goToHint(i)}
+                        aria-label={`Go to clue ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="game-hint-card__panel game-hint-card__panel--search">
+                  <div className="game-hint-search-results" role="group" aria-label="Matching players">
+                    {currentInput.trim().length === 0 ? (
+                      <p className="game-hint-search-hint">Type letters on the grid to see matches.</p>
+                    ) : currentInput.trim().length < 2 ? (
+                      <p className="game-hint-search-hint">Type one more letter on the grid.</p>
+                    ) : playerPrefixMatches.length === 0 ? (
+                      <p className="game-hint-search-hint">
+                        No names start with <strong>{currentInput.toUpperCase()}</strong>.
+                      </p>
+                    ) : (
+                      playerPrefixMatches.map((p, i) => (
+                        <button
+                          key={`${p.name}-${p.meta.fullName}-${i}`}
+                          type="button"
+                          className="game-hint-search-row"
+                          disabled={inputLocked || isAnimating || gameOver}
+                          onClick={() => {
+                            setCurrentInput(p.name.toLowerCase().slice(0, WORD_LENGTH));
+                          }}
+                        >
+                          <span className="game-hint-search-row__token">{p.name}</span>
+                          <span className="game-hint-search-row__name">{p.meta.fullName}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </div>
