@@ -12,6 +12,7 @@ export type RoomInfo = {
   currentRound: number;
   creatorScore: number;
   opponentScore: number;
+  isBotMatch?: boolean;
   createdAt: string;
 };
 

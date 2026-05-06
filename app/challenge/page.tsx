@@ -17,6 +17,8 @@ import StumpdHowToPlay from "../stumpd/stumpd-how-to-play";
 import { fetchPuzzleToday, fetchHardModePuzzleToday } from "../services/ipl-api";
 import { isLoggedIn, getStoredUser } from "../services/auth-api";
 
+type ChallengeMode = "chooser" | "friend";
+
 export default function ChallengePage() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState("");
@@ -29,6 +31,7 @@ export default function ChallengePage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [puzzleDay, setPuzzleDay] = useState<number | undefined>(undefined);
   const [hardModePuzzleDay, setHardModePuzzleDay] = useState<number | undefined>(undefined);
+  const [mode, setMode] = useState<ChallengeMode>("chooser");
 
   useEffect(() => {
     fetchPuzzleToday().then((p) => setPuzzleDay(p.day)).catch(() => {});
@@ -110,119 +113,210 @@ export default function ChallengePage() {
     router.push(`/challenge/${code}`);
   }, [joinCode, playerName, router]);
 
+  const handleChooseFriend = useCallback(() => {
+    setError("");
+    setMode("friend");
+  }, []);
+
+  const handleChooseRandom = useCallback(() => {
+    router.push("/challenge/random");
+  }, [router]);
+
+  const handleBackToChooser = useCallback(() => {
+    setError("");
+    setMode("chooser");
+  }, []);
+
   return (
     <main className="hub-page challenge-hub">
       <PageHeader showHowToPlay={false} />
 
       <div className="challenge-hub__hero" style={{ animation: "hubCardIn 0.4s ease both" }}>
-        <h1 className="challenge-hub__title">⚔️ Challenge a Friend</h1>
+        <h1 className="challenge-hub__title">⚔️ Challenge</h1>
         <p className="challenge-hub__subtitle">
           Same cricketer. Two guessers. Who cracks it first?
         </p>
       </div>
 
-      <div className="info-card" style={{ animation: "hubCardIn 0.35s ease 0.04s both" }}>
-        <p className="info-card__text">
-          Create a private room and share the code with a friend. Both of you
-          solve the same mystery cricketer puzzle at the same time. The faster
-          guesser wins — it&apos;s Stumpd, but head-to-head.
-        </p>
-      </div>
-
-      <div className="challenge-hub__cards-grid">
-        <div className="challenge-hub__card" style={{ animation: "hubCardIn 0.4s ease 0.06s both" }}>
-          <div className="challenge-hub__card-header">
-            <span className="challenge-hub__card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      {mode === "chooser" ? (
+        <div className="challenge-hub__cards-grid">
+          <button
+            type="button"
+            className="challenge-hub__card challenge-hub__card--choice"
+            onClick={handleChooseFriend}
+            style={{ animation: "hubCardIn 0.4s ease 0.06s both", textAlign: "left", cursor: "pointer", border: "1px solid #e2e8f0", background: "#fff" }}
+          >
+            <div className="challenge-hub__card-header">
+              <span className="challenge-hub__card-icon" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.7 0-8 1.34-8 4v3h7v-3a4.94 4.94 0 0 1 1.6-3.5A11.13 11.13 0 0 0 8 13zm8 0c-.4 0-.86 0-1.36.06A4.96 4.96 0 0 1 17 17v3h7v-3c0-2.66-5.3-4-8-4z" fill="currentColor" />
+                </svg>
+              </span>
+              <h2 className="challenge-hub__card-title">Challenge a Friend</h2>
+            </div>
+            <p className="challenge-hub__card-desc">Create a private room and share the code with someone you know.</p>
+            <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#2d6a4f", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              Create or join a room
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            <h2 className="challenge-hub__card-title">Create a Room</h2>
-          </div>
-          <p className="challenge-hub__card-desc">Start a new match and share the code with your opponent.</p>
-
-          <label className="challenge-hub__label" htmlFor="ch-name">Your Display Name</label>
-          <input
-            id="ch-name"
-            className="challenge-hub__input"
-            type="text"
-            placeholder="Enter your name"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            maxLength={30}
-            autoComplete="off"
-          />
+          </button>
 
           <button
             type="button"
-            className="challenge-hub__create-btn"
-            onClick={handleCreate}
-            disabled={creating}
+            className="challenge-hub__card challenge-hub__card--choice"
+            onClick={handleChooseRandom}
+            style={{ animation: "hubCardIn 0.4s ease 0.12s both", textAlign: "left", cursor: "pointer", border: "1px solid #e2e8f0", background: "#fff" }}
           >
-            {creating ? (
-              <span className="challenge-hub__spinner" />
-            ) : (
-              "Create Room"
-            )}
-          </button>
-        </div>
-
-        <div className="challenge-hub__card" style={{ animation: "hubCardIn 0.4s ease 0.12s both" }}>
-          <div className="challenge-hub__card-header">
-            <span className="challenge-hub__card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <div className="challenge-hub__card-header">
+              <span className="challenge-hub__card-icon" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <h2 className="challenge-hub__card-title">Challenge a Random Player</h2>
+            </div>
+            <p className="challenge-hub__card-desc">Get matched with someone online right now and see who solves it first.</p>
+            <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#2d6a4f", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              Find a match
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            <h2 className="challenge-hub__card-title">Join a Room</h2>
-          </div>
-          <p className="challenge-hub__card-desc">Got a code from a friend? Jump into their match.</p>
-
-          <label className="challenge-hub__label" htmlFor="ch-code">Room Code</label>
-          <div className="challenge-hub__join-row">
-            <input
-              id="ch-code"
-              className="challenge-hub__input challenge-hub__input--code"
-              type="text"
-              placeholder="E.g. K9X2MP"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-              maxLength={6}
-              autoComplete="off"
-            />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div style={{ width: "100%", maxWidth: 540, marginBottom: 4 }}>
             <button
               type="button"
-              className="challenge-hub__join-btn"
-              onClick={handleJoin}
+              onClick={handleBackToChooser}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "transparent",
+                border: "none",
+                color: "#64748b",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                padding: "4px 0",
+              }}
             >
-              Join
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Choose a different mode
             </button>
           </div>
-        </div>
-      </div>
 
-      {error && <p className="challenge-hub__error" style={{ animation: "hubCardIn 0.25s ease both" }}>{error}</p>}
-
-      {history.length > 0 && (
-        <div className="challenge-hub__history" style={{ animation: "hubCardIn 0.4s ease 0.18s both" }}>
-          <h2 className="challenge-hub__history-title">Recent Challenges</h2>
-          <div className="challenge-hub__history-list">
-            {history.slice(0, 5).map((h, i) => (
-              <div key={i} className="challenge-hub__history-item" data-result={h.result}>
-                <span className="challenge-hub__history-result" data-result={h.result}>
-                  {h.result === "won" ? "W" : h.result === "lost" ? "L" : "D"}
-                </span>
-                <span className="challenge-hub__history-name">vs {h.opponentName}</span>
-                <span className="challenge-hub__history-date">
-                  {new Date(h.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                </span>
-              </div>
-            ))}
+          <div className="info-card" style={{ animation: "hubCardIn 0.35s ease 0.04s both" }}>
+            <p className="info-card__text">
+              Create a private room and share the code with a friend. Both of you
+              solve the same mystery cricketer puzzle at the same time. The faster
+              guesser wins — it&apos;s Stumpd, but head-to-head.
+            </p>
           </div>
-        </div>
+
+          <div className="challenge-hub__cards-grid">
+            <div className="challenge-hub__card" style={{ animation: "hubCardIn 0.4s ease 0.06s both" }}>
+              <div className="challenge-hub__card-header">
+                <span className="challenge-hub__card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <h2 className="challenge-hub__card-title">Create a Room</h2>
+              </div>
+              <p className="challenge-hub__card-desc">Start a new match and share the code with your opponent.</p>
+
+              <label className="challenge-hub__label" htmlFor="ch-name">Your Display Name</label>
+              <input
+                id="ch-name"
+                className="challenge-hub__input"
+                type="text"
+                placeholder="Enter your name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                maxLength={30}
+                autoComplete="off"
+              />
+
+              <button
+                type="button"
+                className="challenge-hub__create-btn"
+                onClick={handleCreate}
+                disabled={creating}
+              >
+                {creating ? (
+                  <span className="challenge-hub__spinner" />
+                ) : (
+                  "Create Room"
+                )}
+              </button>
+            </div>
+
+            <div className="challenge-hub__card" style={{ animation: "hubCardIn 0.4s ease 0.12s both" }}>
+              <div className="challenge-hub__card-header">
+                <span className="challenge-hub__card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <h2 className="challenge-hub__card-title">Join a Room</h2>
+              </div>
+              <p className="challenge-hub__card-desc">Got a code from a friend? Jump into their match.</p>
+
+              <label className="challenge-hub__label" htmlFor="ch-code">Room Code</label>
+              <div className="challenge-hub__join-row">
+                <input
+                  id="ch-code"
+                  className="challenge-hub__input challenge-hub__input--code"
+                  type="text"
+                  placeholder="E.g. K9X2MP"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+                  maxLength={6}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="challenge-hub__join-btn"
+                  onClick={handleJoin}
+                >
+                  Join
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {error && <p className="challenge-hub__error" style={{ animation: "hubCardIn 0.25s ease both" }}>{error}</p>}
+
+          {history.length > 0 && (
+            <div className="challenge-hub__history" style={{ animation: "hubCardIn 0.4s ease 0.18s both" }}>
+              <h2 className="challenge-hub__history-title">Recent Challenges</h2>
+              <div className="challenge-hub__history-list">
+                {history.slice(0, 5).map((h, i) => (
+                  <div key={i} className="challenge-hub__history-item" data-result={h.result}>
+                    <span className="challenge-hub__history-result" data-result={h.result}>
+                      {h.result === "won" ? "W" : h.result === "lost" ? "L" : "D"}
+                    </span>
+                    <span className="challenge-hub__history-name">vs {h.opponentName}</span>
+                    <span className="challenge-hub__history-date">
+                      {new Date(h.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Link href="/" className="challenge-hub__back-home">

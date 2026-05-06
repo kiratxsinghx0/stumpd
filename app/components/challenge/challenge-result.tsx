@@ -40,6 +40,7 @@ type Props = {
   aliasWord?: string | null;
   answerFullName?: string;
   answerWord?: string;
+  isBotMatch?: boolean;
 };
 
 export default function ChallengeResult({
@@ -54,11 +55,12 @@ export default function ChallengeResult({
   aliasWord,
   answerFullName,
   answerWord,
+  isBotMatch = false,
 }: Props) {
   const iWon = winner === myRole;
   const isDraw = winner === "draw";
   const isSeries = seriesLength > 1;
-  const canPropose = !isSeries && !!socket && !!roomCode;
+  const canPropose = !isSeries && !isBotMatch && !!socket && !!roomCode;
 
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
