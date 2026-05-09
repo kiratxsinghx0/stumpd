@@ -118,6 +118,37 @@ function readStoredClueTab(): "hints" | "search" {
 
 type IplHintEntry = PuzzleHintEntry;
 
+/** Normalised full-name key for comparisons (handles spacing / case). */
+function normFullKey(v: string | undefined | null): string {
+  return (v?.trim().toLowerCase() ?? "");
+}
+
+/** Keys for identities allowed as “today’s” answer token: narrowed by decoded `puzzle.fullName`, or exactly one roster entry for that token. */
+function answerFullNameKeysForAlias(
+  answerToken: string,
+  answerFullName: string | null | undefined,
+  playerList: IplPlayerRow[],
+): Set<string> {
+  const t = answerToken.trim().toLowerCase();
+  const rows = playerList.filter((p) => p.name.toLowerCase() === t);
+  if (!rows.length) return new Set();
+
+  const puzzleKey = normFullKey(answerFullName);
+  if (puzzleKey) {
+    const narrowed = new Set<string>();
+    for (const r of rows) {
+      const k = normFullKey(r.meta.fullName);
+      if (k === puzzleKey) narrowed.add(k);
+    }
+    if (narrowed.size > 0) return narrowed;
+  }
+
+  const distinct = new Set(
+    rows.map((r) => normFullKey(r.meta.fullName)).filter(Boolean),
+  );
+  return distinct.size === 1 ? distinct : new Set();
+}
+
 /** When `disambiguateFullName` is set (from the daily puzzle), pick that row among duplicate tokens (e.g. RASHI). */
 function resolvePlayerByName(
   token: string,
@@ -126,16 +157,17 @@ function resolvePlayerByName(
 ): IplPlayerRow | null {
   const normalized = token.trim().toLowerCase();
   const matches = playerList.filter((p) => p.name.toLowerCase() === normalized);
+  const fnNorm = normFullKey(disambiguateFullName);
   if (matches.length === 0) {
-    const fn = disambiguateFullName?.trim();
-    if (fn) {
-      return playerList.find((p) => p.meta.fullName === fn) ?? null;
+    if (fnNorm) {
+      return (
+        playerList.find((p) => normFullKey(p.meta.fullName) === fnNorm) ?? null
+      );
     }
     return null;
   }
-  const fn = disambiguateFullName?.trim();
-  if (fn) {
-    const hit = matches.find((p) => p.meta.fullName === fn);
+  if (fnNorm) {
+    const hit = matches.find((p) => normFullKey(p.meta.fullName) === fnNorm);
     if (hit) return hit;
   }
   return matches[0] ?? null;
@@ -150,10 +182,21 @@ function isSamePlayer(
 ): boolean {
   if (guess === answer) return true;
   if (exactOnly) return false;
-  const gp = resolvePlayerByName(guess, playerList, null);
-  const ap = resolvePlayerByName(answer, playerList, answerFullName ?? null);
-  if (!gp || !ap) return false;
-  return !!gp.meta.fullName && gp.meta.fullName === ap.meta.fullName;
+
+  const answerKeys = answerFullNameKeysForAlias(
+    answer,
+    answerFullName ?? null,
+    playerList,
+  );
+  if (!answerKeys.size) return false;
+
+  const guessNorm = guess.trim().toLowerCase();
+  for (const p of playerList) {
+    if (p.name.toLowerCase() !== guessNorm) continue;
+    const k = normFullKey(p.meta.fullName);
+    if (k && answerKeys.has(k)) return true;
+  }
+  return false;
 }
 
 const MAX_GUESSES  = 6;
