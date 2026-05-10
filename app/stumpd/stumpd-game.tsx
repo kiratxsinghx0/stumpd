@@ -1713,7 +1713,7 @@ export default function Game() {
   const emptyText = useDarkTheme ? "#e0c97f" : "#000";
   const filledBorder = useDarkTheme ? "#8b7e4a" : "#888";
 
-  const showAssistSlot = !useDarkTheme && showHintSlot;
+  const showAssistSlot = showHintSlot;
 
   return (
     <>
